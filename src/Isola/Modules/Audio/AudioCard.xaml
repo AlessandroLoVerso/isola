@@ -1,0 +1,210 @@
+<UserControl x:Class="Isola.Modules.Audio.AudioCard"
+             x:ClassModifier="internal"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="Vis" />
+        <sys:Boolean x:Key="True">True</sys:Boolean>
+        <SolidColorBrush x:Key="MuteRed" Color="#FF453A" />
+
+        <!-- Big round microphone button -->
+        <Style x:Key="MicButton" TargetType="Button">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Width="72" Height="72">
+                            <Ellipse x:Name="Disc" Fill="{DynamicResource Isola.Brush.Surface}" />
+                            <TextBlock x:Name="Glyph" Text="&#xE720;" FontSize="26"
+                                       FontFamily="{DynamicResource Isola.Font.Icons}"
+                                       Foreground="{DynamicResource Isola.Brush.Foreground}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Disc" Property="Fill" Value="{DynamicResource Isola.Brush.SurfaceHover}" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding Muted}" Value="True">
+                                <Setter TargetName="Disc" Property="Fill" Value="{StaticResource MuteRed}" />
+                                <Setter TargetName="Glyph" Property="Text" Value="&#xF781;" />
+                                <Setter TargetName="Glyph" Property="Foreground" Value="White" />
+                            </DataTrigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Disc" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Toggle chip (Wi-Fi, Bluetooth): Tag = on/off -->
+        <Style x:Key="ToggleChip" TargetType="Button">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource Isola.Brush.Foreground}" />
+            <Setter Property="Background" Value="{DynamicResource Isola.Brush.Surface}" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="12" Height="40" Padding="12,0">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Isola.Brush.SurfaceHover}" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="{StaticResource True}">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Isola.Brush.Accent}" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Shortcut chip (opens a Settings page) -->
+        <Style x:Key="LinkChip" TargetType="Button">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource Isola.Brush.Foreground}" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{DynamicResource Isola.Brush.Surface}" CornerRadius="12" Height="48" Padding="4,0">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Isola.Brush.SurfaceHover}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RowGlyph" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource Isola.Font.Icons}" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Foreground" Value="{DynamicResource Isola.Brush.Muted}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style x:Key="RowValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource Isola.Brush.Muted}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+        <Style x:Key="ChipGlyph" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource Isola.Font.Icons}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="2,0,0,0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="112" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Microphone -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,8,4">
+            <Button x:Name="MicButton" Style="{StaticResource MicButton}" HorizontalAlignment="Center"
+                    ToolTip="Metti o togli il muto a tutti i microfoni" />
+            <TextBlock Text="{Binding MicLabel}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0" />
+            <TextBlock Text="{Binding HotkeyHint}" FontSize="11" HorizontalAlignment="Center" Margin="0,2,0,0" TextAlignment="Center" TextWrapping="Wrap"
+                       Foreground="{DynamicResource Isola.Brush.Muted}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,2">
+            <!-- Volume -->
+            <Grid Height="30" Visibility="{Binding HasOutput, Converter={StaticResource Vis}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="34" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding VolumeGlyph}" Style="{StaticResource RowGlyph}" ToolTip="Volume" />
+                <Slider Grid.Column="1" Minimum="0" Maximum="100" Style="{DynamicResource Isola.Style.Slider}"
+                        VerticalAlignment="Center" Value="{Binding Volume, Mode=TwoWay}" />
+                <TextBlock Grid.Column="2" Text="{Binding VolumeText}" Style="{StaticResource RowValue}" />
+            </Grid>
+
+            <!-- Brightness -->
+            <Grid Height="30" Visibility="{Binding BrightnessAvailable, Converter={StaticResource Vis}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="34" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="&#xE706;" Style="{StaticResource RowGlyph}" ToolTip="Luminosità" />
+                <Slider Grid.Column="1" Minimum="0" Maximum="100" Style="{DynamicResource Isola.Style.Slider}"
+                        VerticalAlignment="Center" Value="{Binding Brightness, Mode=TwoWay}" />
+                <TextBlock Grid.Column="2" Text="{Binding BrightnessText}" Style="{StaticResource RowValue}" />
+            </Grid>
+
+            <!-- Radios -->
+            <UniformGrid Rows="1" Margin="0,10,-6,0" Visibility="{Binding HasRadios, Converter={StaticResource Vis}}">
+                <Button x:Name="WifiChip" Style="{StaticResource ToggleChip}" Tag="{Binding WifiOn}"
+                        Visibility="{Binding HasWifi, Converter={StaticResource Vis}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE701;" Style="{StaticResource ChipGlyph}" />
+                        <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Wi-Fi" FontSize="12" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding WifiState}" FontSize="11" Opacity="0.75" />
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="BluetoothChip" Style="{StaticResource ToggleChip}" Tag="{Binding BluetoothOn}"
+                        Visibility="{Binding HasBluetooth, Converter={StaticResource Vis}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE702;" Style="{StaticResource ChipGlyph}" />
+                        <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Bluetooth" FontSize="12" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding BluetoothState}" FontSize="11" Opacity="0.75" />
+                        </StackPanel>
+                    </StackPanel>
+                </Button>
+            </UniformGrid>
+
+            <!-- Shortcuts -->
+            <UniformGrid Rows="1" Margin="0,6,-6,0">
+                <Button x:Name="NightLightChip" Style="{StaticResource LinkChip}" ToolTip="Apri le impostazioni della luce notturna">
+                    <StackPanel>
+                        <TextBlock Text="&#xE708;" Style="{StaticResource ChipGlyph}" FontSize="14" HorizontalAlignment="Center" />
+                        <TextBlock Text="Luce notturna" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Center" Foreground="{DynamicResource Isola.Brush.Muted}" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="QuietChip" Style="{StaticResource LinkChip}" ToolTip="Apri le impostazioni di Non disturbare">
+                    <StackPanel>
+                        <TextBlock Text="&#xE7ED;" Style="{StaticResource ChipGlyph}" FontSize="14" HorizontalAlignment="Center" />
+                        <TextBlock Text="Non disturbare" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Center" Foreground="{DynamicResource Isola.Brush.Muted}" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="ClipChip" Style="{StaticResource LinkChip}" ToolTip="Cattura una parte dello schermo">
+                    <StackPanel>
+                        <TextBlock Text="&#xE924;" Style="{StaticResource ChipGlyph}" FontSize="14" HorizontalAlignment="Center" />
+                        <TextBlock Text="Cattura" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Center" Foreground="{DynamicResource Isola.Brush.Muted}" />
+                    </StackPanel>
+                </Button>
+            </UniformGrid>
+        </StackPanel>
+    </Grid>
+</UserControl>

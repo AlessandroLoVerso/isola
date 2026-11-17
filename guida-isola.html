@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Isola – guida per costruirla</title>
+<style>
+  @page { size: A4; margin: 18mm 17mm 20mm 17mm; }
+  :root {
+    --ink: #1b1c20; --muted: #5b5f6b; --line: #e3e4e8; --accent: #e8590c;
+    --accent-soft: #fff1e8; --blue-soft: #eef3ff; --blue: #2f5bd3; --code: #f5f6f8;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); font-size: 10.4pt; line-height: 1.5; margin: 0; }
+  h1, h2, h3 { line-height: 1.2; margin: 0; }
+  h2 { font-size: 17pt; margin: 0 0 4mm; padding-bottom: 2mm; border-bottom: 2px solid var(--accent); }
+  h3 { font-size: 12pt; margin: 5mm 0 2mm; }
+  p { margin: 0 0 2.6mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 5mm; }
+  li { margin-bottom: 1mm; }
+  code { font-family: "Cascadia Mono", Consolas, monospace; font-size: 8.8pt; background: var(--code); padding: 0 1.2mm; border-radius: 1mm; }
+  pre { font-family: "Cascadia Mono", Consolas, monospace; font-size: 8.3pt; line-height: 1.4; background: var(--code); border: 1px solid var(--line); border-radius: 2mm; padding: 3mm 3.5mm; margin: 0 0 3mm; white-space: pre-wrap; word-break: break-word; break-inside: avoid; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  table { border-collapse: collapse; width: 100%; margin: 0 0 3.5mm; font-size: 9.4pt; break-inside: auto; }
+  th, td { text-align: left; vertical-align: top; padding: 1.6mm 2mm; border-bottom: 1px solid var(--line); }
+  th { font-size: 8.6pt; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); border-bottom: 1.5px solid var(--ink); }
+  tr { break-inside: avoid; }
+  .section { break-before: page; }
+  .box { border-radius: 2mm; padding: 3mm 4mm; margin: 0 0 3.5mm; break-inside: avoid; }
+  .box.prompt { background: var(--blue-soft); border-left: 3px solid var(--blue); }
+  .box.prompt .lab { color: var(--blue); }
+  .box.warn { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+  .box.warn .lab { color: var(--accent); }
+  .lab { font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 1mm; display: block; }
+  .prompt p { font-family: "Cascadia Mono", Consolas, monospace; font-size: 8.6pt; line-height: 1.45; margin: 0; }
+  .phase-head { display: flex; align-items: baseline; gap: 3mm; margin: 0 0 3mm; }
+  .phase-num { font-size: 26pt; font-weight: 800; color: var(--accent); line-height: 1; }
+  .phase-title { font-size: 16pt; font-weight: 700; }
+  .meta { color: var(--muted); font-size: 9pt; margin-bottom: 3mm; }
+  .done { color: var(--muted); font-size: 9.2pt; }
+  .done b { color: var(--ink); }
+  .phase { margin-top: 10mm; padding-top: 6mm; border-top: 1px solid var(--line); }
+  .phase-head, h3, .meta { break-after: avoid; }
+  .section + .phase { break-before: page; border-top: 0; margin-top: 0; padding-top: 0; }
+  /* cover */
+  .cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .cover .kicker { font-size: 10pt; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .cover h1 { font-size: 40pt; font-weight: 800; letter-spacing: -.02em; margin: 4mm 0 5mm; }
+  .cover .sub { font-size: 13pt; color: var(--muted); max-width: 150mm; }
+  .pill { display: inline-block; margin-top: 14mm; background: #121317; color: #fff; border-radius: 30mm; padding: 4mm 9mm; font-size: 11pt; }
+  .pill span { color: #ff9a5c; }
+  .toc { font-size: 10pt; columns: 2; column-gap: 10mm; }
+  .toc div { break-inside: avoid; padding: 1mm 0; border-bottom: 1px dotted var(--line); }
+  .small { font-size: 8.8pt; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- COPERTINA -->
+<div class="cover">
+  <div>
+    <div class="kicker">Guida di costruzione · novembre 2026</div>
+    <h1>Isola</h1>
+    <div class="sub">La nostra "isola" in alto per Windows, fatta in casa: tutte le funzioni di NotchPixel, divise in fasi, con le API da usare, i pezzi di codice chiave e il prompt pronto da dare a Claude Code per ogni fase.</div>
+    <div class="pill">● &nbsp;Isola &nbsp;<span>♪ In riproduzione</span></div>
+  </div>
+  <div>
+    <h3>Cosa c'è dentro</h3>
+    <div class="toc">
+      <div>A · Averla subito, senza costruire niente</div>
+      <div>B · Le scelte tecniche</div>
+      <div>C · Come usare questa guida</div>
+      <div>Fase 0 · Il progetto</div>
+      <div>Fase 1 · L'isola</div>
+      <div>Fase 2 · Musica e testi</div>
+      <div>Fase 3 · Appunti</div>
+      <div>Fase 4 · Mensola dei file</div>
+      <div>Fase 5 · Tasto muto e controlli rapidi</div>
+      <div>Fase 6 · Notifiche</div>
+      <div>Fase 7 · Promemoria, widget, orologio Day</div>
+      <div>Fase 8 · Agenti di Claude Code</div>
+      <div>Fase 9 · File al telefono e PC Deck</div>
+      <div>Fase 10 · Striscia giochi</div>
+      <div>Fase 11 · Il vetro</div>
+      <div>Fase 12 · Web drawer e streaming</div>
+      <div>Fase 13 · Impostazioni e Store</div>
+      <div>Fase 14 · La barra delle applicazioni</div>
+      <div>D · Ordine, tempi, rischi</div>
+    </div>
+    <p class="small" style="margin-top:6mm">Le funzioni vengono dal sito e dal press kit di NotchPixel (notchpixel.com, versione 0.5.97). Il "come" è una ricostruzione: il loro codice non è pubblico. "Isola" è un nome provvisorio.</p>
+  </div>
+</div>
+
+<!-- A -->
+<div class="section">
+  <h2>A · Averla subito, senza costruire niente</h2>
+  <p>Se l'obiettivo è solo avere quel desktop domani mattina, questa è la strada corta.</p>
+  <table>
+    <tr><th style="width:28%">Pezzo</th><th style="width:36%">Con cosa</th><th>Costo e note</th></tr>
+    <tr><td>L'isola completa</td><td>NotchPixel dal Microsoft Store</td><td>7 giorni gratis, poi 9,99 $ una volta. Windows 10 2004+ e 11, solo x64.</td></tr>
+    <tr><td>Un'isola gratis</td><td>DynamicWin (GitHub, open source) oppure Isle Notch (Store)</td><td>Meno funzioni, ma gratis. DynamicWin è anche un buon codice da studiare.</td></tr>
+    <tr><td>Sfondo animato</td><td>Lively Wallpaper (Store, gratis e open source)</td><td>Lo sfondo del reel è "girl in yellow sundress" su motionbgs.com. NotchPixel non lo fa da sé: si appoggia a Lively.</td></tr>
+    <tr><td>Barra trasparente</td><td>TranslucentTB (Store, gratis)</td><td>Rende trasparente o sfocata la barra di Windows.</td></tr>
+    <tr><td>Scritta gigante del giorno</td><td>Un widget di Lively o di Rainmeter</td><td>Nel reel è l'orologio "Day" di NotchPixel.</td></tr>
+  </table>
+  <div class="box warn"><span class="lab">Attenzione</span>NotchPixel si vende solo sul Microsoft Store. Le copie "gratis" o gli APK che girano altrove non sono suoi e possono contenere malware.</div>
+
+  <h2 style="margin-top:8mm">B · Le scelte tecniche</h2>
+  <h3>Linguaggio e framework: C# con .NET 8 e WPF</h3>
+  <ul>
+    <li><b>Perché C#:</b> quasi tutto quello che serve sono API di Windows (WinRT e Win32). In C# si chiamano direttamente, con buoni esempi online, e Claude Code ci lavora bene.</li>
+    <li><b>Perché WPF e non WinUI 3:</b> l'isola è una finestra trasparente, senza bordi, sempre sopra. In WPF basta <code>AllowsTransparency</code>; in WinUI 3 la trasparenza è ancora scomoda.</li>
+    <li><b>Il trucco per le API moderne:</b> nel file di progetto metti <code>&lt;TargetFramework&gt;net8.0-windows10.0.19041.0&lt;/TargetFramework&gt;</code>. Così hai le API WinRT (musica, notifiche, cattura dello schermo) senza pacchetti extra, e funziona anche su Windows 10 2004.</li>
+    <li><b>Perché non Electron o Tauri:</b> funzionerebbero per la grafica, ma per musica, microfono, appunti e giochi dovresti comunque scrivere codice nativo. Due mondi invece di uno.</li>
+  </ul>
+  <h3>Librerie (tutte gratuite)</h3>
+  <table>
+    <tr><th style="width:30%">Pacchetto NuGet</th><th style="width:22%">Licenza</th><th>Per cosa</th></tr>
+    <tr><td><code>CommunityToolkit.Mvvm</code></td><td>MIT</td><td>Collegare dati e interfaccia senza codice ripetitivo</td></tr>
+    <tr><td><code>NAudio</code></td><td>MIT</td><td>Microfoni, volume, dispositivi audio</td></tr>
+    <tr><td><code>QRCoder</code></td><td>MIT</td><td>Il QR per il telefono</td></tr>
+    <tr><td><code>Microsoft.Web.WebView2</code></td><td>Microsoft</td><td>Il web drawer</td></tr>
+    <tr><td><code>Vortice.Direct3D11</code></td><td>MIT</td><td>Il vetro (fase 11)</td></tr>
+    <tr><td><code>LibreHardwareMonitorLib</code></td><td>MPL-2.0</td><td>Temperature (facoltativo, vedi fase 10)</td></tr>
+  </table>
+  <h3>Cosa installare sul PC</h3>
+  <ul>
+    <li>Visual Studio 2022 Community con il carico di lavoro "Sviluppo di applicazioni desktop .NET" (oppure solo l'SDK di .NET 8 e VS Code).</li>
+    <li>Git, e un repository nuovo per il progetto (non nella cartella temporanea di una chat).</li>
+  </ul>
+  <div class="box warn"><span class="lab">Aspettative oneste</span>NotchPixel dichiara 13 MB di RAM. Un'app WPF in .NET occupa di solito 60–120 MB. Si può scendere (pubblicazione "trimmed", pochi oggetti grafici), ma 13 MB in .NET non è realistico. Per la CPU invece l'obiettivo è lo stesso: 0% quando nessuno la usa.</div>
+</div>
+
+<!-- C -->
+<div class="section">
+  <h2>C · Come usare questa guida</h2>
+  <ol>
+    <li><b>Una fase alla volta.</b> Ogni fase ha: cosa deve fare, come farlo (API e codice chiave), la trappola più comune, quando è finita, e il prompt per Claude Code.</li>
+    <li><b>Copia il prompt nel box blu</b> in una sessione di Claude Code aperta nella cartella del progetto. Claude Code prima propone un piano breve, tu approvi, poi costruisce.</li>
+    <li><b>Prova prima di andare avanti.</b> Ogni fase dice cosa deve succedere sullo schermo. Se non succede, non si passa alla successiva.</li>
+    <li><b>Commit a fine fase</b>, così se una fase dopo rompe qualcosa si torna indietro.</li>
+    <li><b>Le fasi 1–8 sono il cuore.</b> Con quelle hai già un'app che usi tutti i giorni. Le fasi 9–14 sono gli extra, in ordine di difficoltà crescente.</li>
+  </ol>
+
+  <h3>Come è fatto il progetto</h3>
+<pre><code>Isola/
+├─ Isola.sln
+├─ src/Isola/                 ← l'app WPF
+│  ├─ App.xaml                ← avvio, icona nella barra di sistema
+│  ├─ Island/                 ← la finestra dell'isola e le animazioni
+│  ├─ Modules/                ← un modulo per funzione
+│  │  ├─ Music/  Clipboard/  Shelf/  Audio/  Notifications/
+│  │  ├─ Reminders/  Widgets/  Agents/  Phone/  Games/  Stream/
+│  ├─ Native/                 ← tutte le chiamate Win32 (P/Invoke) in un posto
+│  ├─ Settings/               ← impostazioni salvate in JSON
+│  └─ Web/                    ← le pagine per il telefono (fase 9)
+└─ src/Isola.Package/         ← il pacchetto MSIX per lo Store (fase 13)</code></pre>
+  <p>Ogni modulo segue lo stesso schema: un'interfaccia <code>IIslandModule</code> con <code>Start()</code>, <code>Stop()</code>, la "faccia a riposo" (cosa mostra la pillola chiusa) e la "scheda" (cosa mostra l'isola aperta). Così ogni funzione si accende e si spegne dalle impostazioni, e una che si rompe non trascina giù le altre.</p>
+
+  <div class="box prompt"><span class="lab">Regola da mettere nel CLAUDE.md del progetto</span>
+  <p>Progetto Isola: app WPF .NET 8 (net8.0-windows10.0.19041.0), un'isola in alto per Windows 10 e 11. Lavora una fase alla volta: prima un piano breve, poi modifiche piccole. Tutte le chiamate P/Invoke stanno in src/Isola/Native. Ogni funzione è un modulo IIslandModule che si può spegnere. Niente telemetria, niente dati fuori dal PC salvo quando l'utente lo attiva. A riposo la CPU deve stare a 0%: niente timer che girano a vuoto, solo eventi. Prima di dire che una fase è finita, avvia l'app e verifica a schermo.</p></div>
+</div>
+
+<!-- FASE 0 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">0</span><span class="phase-title">Il progetto</span></div>
+  <div class="meta">Tempo indicativo: un'ora · Difficoltà: bassa</div>
+  <h3>Cosa deve fare</h3>
+  <p>Una soluzione vuota che si avvia, mostra un'icona vicino all'orologio di Windows con il menu "Impostazioni / Esci", e permette una sola copia dell'app alla volta.</p>
+  <h3>Come</h3>
+  <ul>
+    <li><code>dotnet new wpf -n Isola</code>, poi nel <code>.csproj</code>: il TargetFramework con <code>10.0.19041.0</code>, <code>&lt;Nullable&gt;enable&lt;/Nullable&gt;</code>, <code>&lt;UseWindowsForms&gt;true&lt;/UseWindowsForms&gt;</code> (serve solo per <code>NotifyIcon</code>, l'icona nella barra di sistema).</li>
+    <li>Un'unica copia: un <code>Mutex</code> con nome fisso all'avvio. Se esiste già, l'app si chiude.</li>
+    <li>DPI: nel file <code>app.manifest</code> metti <code>PerMonitorV2</code>. Senza, su un portatile con lo zoom al 125% l'isola esce sfocata o fuori posto.</li>
+  </ul>
+<pre><code>&lt;application xmlns="urn:schemas-microsoft-com:asm.v3"&gt;
+  &lt;windowsSettings&gt;
+    &lt;dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings"&gt;PerMonitorV2&lt;/dpiAwareness&gt;
+  &lt;/windowsSettings&gt;
+&lt;/application&gt;</code></pre>
+  <p class="done"><b>Finita quando:</b> l'app parte, l'icona c'è, "Esci" la chiude, un secondo avvio non apre una seconda copia.</p>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Crea la soluzione Isola come descritto nel CLAUDE.md: progetto WPF .NET 8 in src/Isola con TargetFramework net8.0-windows10.0.19041.0, manifest con dpiAwareness PerMonitorV2, istanza unica con Mutex, icona nella barra di sistema (NotifyIcon) con menu Impostazioni ed Esci. Crea le cartelle Island, Modules, Native, Settings e l'interfaccia IIslandModule (Start, Stop, RestingFace, Card). Fai git init e il primo commit.</p></div>
+</div>
+
+<!-- FASE 1 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">1</span><span class="phase-title">L'isola</span></div>
+  <div class="meta">Tempo indicativo: 1–2 giorni · Difficoltà: media · È la base di tutto</div>
+  <h3>Cosa deve fare</h3>
+  <ul>
+    <li>Una pillola nera in alto al centro, sempre sopra le altre finestre, che non ruba mai il focus.</li>
+    <li>Si apre in una scheda quando il mouse <b>ci resta sopra</b> per ~250 ms (non al semplice passaggio, così i clic sulle schede del browser sotto non la aprono). Si richiude quando il mouse esce.</li>
+    <li>Due forme: <b>isola</b> (staccata dal bordo, come l'iPhone) o <b>notch</b> (attaccata al bordo con le curve, come il MacBook).</li>
+    <li>Animazione a molla tra chiusa e aperta. Una barra di schede in alto nella scheda aperta (una per modulo).</li>
+    <li>Sopra un gioco o un video a schermo intero diventa una striscia sottile, oppure sparisce.</li>
+  </ul>
+  <h3>Come</h3>
+  <p>Finestra WPF: <code>WindowStyle="None"</code>, <code>AllowsTransparency="True"</code>, <code>Background="Transparent"</code>, <code>Topmost="True"</code>, <code>ShowInTaskbar="False"</code>, <code>ShowActivated="False"</code>. Poi, nella <code>SourceInitialized</code>, aggiungi gli stili estesi che WPF non espone:</p>
+<pre><code>const int GWL_EXSTYLE = -20;
+const int WS_EX_TOOLWINDOW = 0x80;        // niente Alt+Tab
+const int WS_EX_NOACTIVATE = 0x08000000;  // non ruba il focus
+var hwnd = new WindowInteropHelper(this).Handle;
+var ex = GetWindowLong(hwnd, GWL_EXSTYLE);
+SetWindowLong(hwnd, GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);</code></pre>
+  <ul>
+    <li><b>Una finestra grande quanto la scheda aperta, non quanto la pillola.</b> La parte trasparente non deve bloccare i clic: quando l'isola è chiusa rendi "clic-trasparente" il resto (<code>WS_EX_TRANSPARENT</code> attivato e disattivato, oppure ridimensiona la finestra a ogni apertura). La prima soluzione è più fluida.</li>
+    <li><b>Hover con ritardo:</b> un <code>DispatcherTimer</code> da 250 ms che parte su <code>MouseEnter</code> e si ferma su <code>MouseLeave</code>. Per la chiusura un ritardo di ~300 ms, così se il mouse esce per sbaglio di un pixel l'isola non sbatte.</li>
+    <li><b>Animazioni:</b> anima larghezza, altezza e raggio degli angoli con una curva a molla (<code>ElasticEase</code> con poche oscillazioni, oppure una molla tua in <code>CompositionTarget.Rendering</code> che si ferma appena arriva).</li>
+    <li><b>Posizione e monitor:</b> calcola il centro del monitor scelto con <code>Screen.AllScreens</code> e converti in unità WPF col DPI di quel monitor (<code>VisualTreeHelper.GetDpi</code>).</li>
+    <li><b>Schermo intero:</b> ascolta il cambio di finestra in primo piano con <code>SetWinEventHook(EVENT_SYSTEM_FOREGROUND)</code>. Se la finestra copre tutto il monitor (confronta il suo rettangolo con quello del monitor) ed è un gioco o un video, passa alla modalità striscia. In aggiunta <code>SHQueryUserNotificationState</code> dice se c'è un'app Direct3D a schermo intero.</li>
+    <li><b>Restare sopra:</b> alcune app (giochi, Esplora risorse dopo un riavvio) si mettono sopra. Ogni volta che cambia la finestra in primo piano, richiama <code>SetWindowPos(hwnd, HWND_TOPMOST, …, SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE)</code>.</li>
+  </ul>
+  <div class="box warn"><span class="lab">Trappola</span>Con <code>WS_EX_NOACTIVATE</code> le caselle di testo dentro l'isola non ricevono la tastiera. Quando l'utente clicca su un campo (per esempio un promemoria), togli lo stile, attiva la finestra, e rimettilo alla chiusura.</div>
+  <p class="done"><b>Finita quando:</b> la pillola sta in alto, tenendo il mouse sopra si apre con la molla, uscendo si chiude, i clic intorno passano alle finestre sotto, Alt+Tab non la mostra, su un video di YouTube a schermo intero diventa una striscia.</p>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 1: costruisci la finestra dell'isola in src/Isola/Island. Finestra WPF trasparente, topmost, senza focus (WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE), al centro in alto del monitor scelto, DPI per monitor. Stati: chiusa (pillola 180×34), aperta (scheda 420×220 con barra di schede in alto). Apertura dopo 250 ms di hover, chiusura dopo 300 ms fuori. Animazione a molla su larghezza, altezza e raggio, che si ferma da sola. Forme "isola" (staccata 8 px) e "notch" (attaccata, angoli superiori curvati verso l'esterno). Le parti trasparenti devono lasciar passare i clic. Modalità striscia sopra le app a schermo intero (SetWinEventHook EVENT_SYSTEM_FOREGROUND + confronto col rettangolo del monitor). Mostrami il piano prima di scrivere codice.</p></div>
+</div>
+
+<!-- FASE 2 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">2</span><span class="phase-title">Musica e testi</span></div>
+  <div class="meta">Tempo indicativo: 1 giorno · Difficoltà: bassa</div>
+  <h3>Cosa deve fare</h3>
+  <p>A riposo: copertina piccola e una barretta che si muove a ritmo. Aperta: copertina, titolo, artista, play/pausa, avanti, indietro, barra di avanzamento trascinabile e, se si vuole, il testo che segue la canzone. Funziona con Spotify, YouTube in Chrome/Edge/Firefox, Apple Music, VLC: qualunque app che si fa vedere nel pannello del volume di Windows.</p>
+  <h3>Come</h3>
+<pre><code>using Windows.Media.Control;
+
+var mgr = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+mgr.CurrentSessionChanged += (_, _) =&gt; Attach(mgr.GetCurrentSession());
+
+async void Attach(GlobalSystemMediaTransportControlsSession? s) {
+    if (s is null) { ShowNothingPlaying(); return; }
+    s.MediaPropertiesChanged  += async (_, _) =&gt; await LoadProps(s);
+    s.PlaybackInfoChanged     += (_, _) =&gt; UpdatePlayState(s.GetPlaybackInfo());
+    s.TimelinePropertiesChanged += (_, _) =&gt; UpdateTimeline(s.GetTimelineProperties());
+    await LoadProps(s);
+}
+async Task LoadProps(GlobalSystemMediaTransportControlsSession s) {
+    var p = await s.TryGetMediaPropertiesAsync();   // Title, Artist, AlbumTitle
+    var stream = await p.Thumbnail.OpenReadAsync();  // la copertina
+    // → BitmapImage per la UI, e colore medio per tingere l'isola
+}
+// comandi: s.TryTogglePlayPauseAsync(), TrySkipNextAsync(),
+//          TrySkipPreviousAsync(), TryChangePlaybackPositionAsync(ticks)</code></pre>
+  <ul>
+    <li><b>La barra di avanzamento:</b> Windows non manda un evento ogni secondo. Prendi <code>Position</code> e <code>LastUpdatedTime</code> dall'ultima timeline e calcola tu la posizione attuale mentre la canzone suona.</li>
+    <li><b>Testi sincronizzati:</b> LRCLIB è gratuito e senza chiave. <code>GET https://lrclib.net/api/get?artist_name=…&amp;track_name=…&amp;duration=…</code> restituisce <code>syncedLyrics</code> in formato LRC (<code>[01:23.45] riga</code>). Salva i testi in una cache su disco. È l'unica funzione di questa fase che va su internet: deve essere spenta di default.</li>
+    <li><b>Colore dell'album:</b> riduci la copertina a 8×8 pixel e prendi il colore più saturo. Usalo per la barra e per un leggero bagliore sull'isola.</li>
+  </ul>
+  <div class="box warn"><span class="lab">Trappola</span>Gli eventi arrivano su un thread qualsiasi: ogni aggiornamento della UI passa da <code>Dispatcher.InvokeAsync</code>. E le copertine di YouTube in Chrome sono piccole e sgranate: NotchPixel le sostituisce con quella ad alta risoluzione presa dall'ID del video. Si può fare dopo.</div>
+  <p class="done"><b>Finita quando:</b> con Spotify e con YouTube in Chrome l'isola mostra la canzone giusta, i tasti funzionano, la barra avanza fluida e trascinandola la canzone salta.</p>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 2: modulo Music in src/Isola/Modules/Music con GlobalSystemMediaTransportControlsSessionManager. Faccia a riposo: copertina 22 px e barretta animata solo mentre suona. Scheda: copertina, titolo, artista, play/pausa, avanti, indietro, barra trascinabile con posizione calcolata da Position + LastUpdatedTime. Colore dominante della copertina per tingere la barra. Testi sincronizzati da lrclib.net (api/get con artista, titolo e durata), cache su disco in %LocalAppData%\Isola\lyrics, opzione spenta di default. Tutti gli aggiornamenti della UI via Dispatcher. Provalo con Spotify e con YouTube in Chrome.</p></div>
+</div>
+
+<!-- FASE 3 + 4 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">3</span><span class="phase-title">Cronologia degli appunti</span></div>
+  <div class="meta">Tempo indicativo: mezza giornata · Difficoltà: bassa</div>
+  <p><b>Cosa deve fare:</b> ricordare gli ultimi elementi copiati (testo, link, immagini, file), in schede, con la ricerca e con i "fissati" che non scadono. Cliccando un elemento torna negli appunti, pronto per Ctrl+V.</p>
+  <h3>Come</h3>
+<pre><code>// nella finestra principale, dopo SourceInitialized
+AddClipboardFormatListener(hwnd);
+HwndSource.FromHwnd(hwnd).AddHook((IntPtr h, int msg, IntPtr w, IntPtr l, ref bool handled) =&gt; {
+    if (msg == 0x031D /* WM_CLIPBOARDUPDATE */) OnClipboardChanged();
+    return IntPtr.Zero;
+});</code></pre>
+  <ul>
+    <li>In <code>OnClipboardChanged</code> leggi con <code>Clipboard.ContainsText / ContainsImage / ContainsFileDropList</code>. Se gli appunti sono occupati da un'altra app, riprova dopo 50 ms (fino a 3 volte).</li>
+    <li>Salva in un piccolo database SQLite in <code>%LocalAppData%\Isola</code>: testo e percorsi così come sono, immagini come PNG a parte. Tieni gli ultimi 200 elementi più i fissati.</li>
+    <li><b>Privacy:</b> ignora quello che i gestori di password segnano come riservato. Lo fanno con i formati <code>ExcludeClipboardContentFromMonitorProcessing</code> e <code>CanIncludeInClipboardHistory</code>: se ci sono, non salvare niente. Bitwarden e simili li usano.</li>
+    <li>Quando sei tu a rimettere un elemento negli appunti, segnati che è tuo, così non lo ri-registri come nuovo.</li>
+  </ul>
+  <p class="done"><b>Finita quando:</b> copi tre cose, le trovi nell'isola, ne fissi una, la riusi con un clic, e una password copiata da Bitwarden non compare.</p>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 3: modulo Clipboard con AddClipboardFormatListener e WM_CLIPBOARDUPDATE. Salva testo, link, immagini (PNG) e liste di file in SQLite in %LocalAppData%\Isola, ultimi 200 più i fissati. Salta gli elementi che hanno i formati ExcludeClipboardContentFromMonitorProcessing o CanIncludeInClipboardHistory = 0. Scheda con tab Tutto / Testo / Immagini / File, ricerca, fissa, elimina; clic = rimetti negli appunti senza registrarlo di nuovo.</p></div>
+
+  <div class="phase-head" style="margin-top:7mm"><span class="phase-num">4</span><span class="phase-title">Mensola dei file</span></div>
+  <div class="meta">Tempo indicativo: mezza giornata · Difficoltà: bassa</div>
+  <p><b>Cosa deve fare:</b> trascini uno o più file sull'isola, restano lì, poi li trascini fuori in un'altra cartella o in un'app (Telegram, una mail, Esplora risorse). Si possono spuntare più file e trascinarli insieme.</p>
+  <h3>Come</h3>
+  <ul>
+    <li><b>Entrata:</b> <code>AllowDrop="True"</code> sulla pillola. In <code>DragEnter</code> l'isola si apre da sola sulla scheda Mensola; in <code>Drop</code> leggi <code>DataFormats.FileDrop</code>. Salva solo i <b>percorsi</b>, non copiare i file.</li>
+    <li><b>Uscita:</b> su <code>MouseMove</code> con il tasto premuto, <code>DragDrop.DoDragDrop(elemento, new DataObject(DataFormats.FileDrop, percorsi), DragDropEffects.Copy | DragDropEffects.Move)</code>.</li>
+    <li>Anteprime: per le immagini una miniatura; per gli altri file l'icona di Windows con <code>SHGetFileInfo</code> o <code>ShellFile</code>.</li>
+  </ul>
+  <div class="box warn"><span class="lab">Trappola</span>La finestra è <code>WS_EX_NOACTIVATE</code>: per alcune app il trascinamento verso l'esterno parte solo se la finestra d'origine è attiva. Se non parte, attivala per la durata del trascinamento.</div>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 4: modulo Shelf. Drop di file sulla pillola (l'isola si apre sulla scheda Mensola durante il trascinamento), salva solo i percorsi, miniature per le immagini e icone di sistema per il resto. Selezione multipla con caselle, trascinamento verso l'esterno con DataObject FileDrop (Copy e Move), pulsanti Apri cartella e Togli. Provalo trascinando fuori verso Esplora risorse e verso il browser.</p></div>
+</div>
+
+<!-- FASE 5 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">5</span><span class="phase-title">Tasto muto e controlli rapidi</span></div>
+  <div class="meta">Tempo indicativo: 1 giorno · Difficoltà: media</div>
+  <h3>Il tasto muto (Ctrl+Alt+M)</h3>
+  <p>Spegne il microfono in tutte le app insieme (Discord, Teams, Meet, giochi), perché agisce sul dispositivo e non sulla singola app. L'isola mostra un microfono rosso e il timer della chiamata.</p>
+<pre><code>// scorciatoia globale
+RegisterHotKey(hwnd, 1, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, (uint)KeyInterop.VirtualKeyFromKey(Key.M));
+// arriva come WM_HOTKEY (0x0312) nello stesso hook della fase 3
+
+// muto su tutti i microfoni attivi (NAudio)
+using var en = new MMDeviceEnumerator();
+foreach (var d in en.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active))
+    d.AudioEndpointVolume.Mute = muted;</code></pre>
+  <ul>
+    <li>Ascolta <code>IMMNotificationClient</code> (in NAudio <code>RegisterEndpointNotificationCallback</code>): quando colleghi delle cuffie USB, il nuovo microfono deve prendere lo stato attuale. NotchPixel aveva proprio questo bug.</li>
+    <li><b>Timer della chiamata:</b> "c'è una chiamata" = qualche app sta usando il microfono. Lo vedi in <code>HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone</code>: per ogni app, <code>LastUsedTimeStop = 0</code> vuol dire che lo sta usando adesso.</li>
+  </ul>
+  <h3>Controlli rapidi</h3>
+  <table>
+    <tr><th style="width:24%">Controllo</th><th>Come</th></tr>
+    <tr><td>Volume</td><td><code>AudioEndpointVolume.MasterVolumeLevelScalar</code> del dispositivo di uscita predefinito</td></tr>
+    <tr><td>Luminosità portatile</td><td>WMI <code>root\WMI</code>, classe <code>WmiMonitorBrightnessMethods</code>, metodo <code>WmiSetBrightness</code></td></tr>
+    <tr><td>Luminosità monitor esterno</td><td>DDC/CI con <code>dxva2.dll</code>: <code>GetPhysicalMonitorsFromHMONITOR</code> + <code>SetMonitorBrightness</code> (non tutti i monitor lo supportano)</td></tr>
+    <tr><td>Wi-Fi e Bluetooth</td><td><code>Windows.Devices.Radios.Radio.GetRadiosAsync()</code> poi <code>SetStateAsync</code></td></tr>
+    <tr><td>Luce notturna, concentrazione</td><td>Nessuna API pubblica. Il modo più sicuro è aprire la pagina giusta delle Impostazioni (<code>ms-settings:nightlight</code>)</td></tr>
+    <tr><td>Modalità risparmio energetico</td><td><code>PowerSetActiveOverlayScheme</code> da <code>powrprof.dll</code> (non documentata ma stabile)</td></tr>
+    <tr><td>Screenshot e ritaglio</td><td>Apri lo Strumento di cattura con <code>ms-screenclip:</code>; i tuoi strumenti si fanno dopo con la fase 11</td></tr>
+  </table>
+  <p>In più, NotchPixel mostra al centro in alto i suoi popup di volume e luminosità al posto di quelli di Windows. Per farlo ascolta le variazioni (<code>OnVolumeNotification</code> in NAudio) e mostra la pillola con la barra. Nascondere i popup di Windows invece non ha un modo pulito: lascialo stare.</p>
+  <p class="done"><b>Finita quando:</b> in una chiamata su Discord, Ctrl+Alt+M ti mette muto e l'icona di Discord lo conferma. Lo stato resta giusto staccando e riattaccando le cuffie.</p>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 5: modulo Audio. Ctrl+Alt+M con RegisterHotKey mette e toglie il muto su tutti i dispositivi di cattura attivi (NAudio), e lo riapplica quando ne arriva uno nuovo (IMMNotificationClient). Faccia a riposo con microfono rosso quando muto e timer della chiamata quando un'app usa il microfono (registro CapabilityAccessManager\ConsentStore\microphone, LastUsedTimeStop = 0). Scheda Controlli con volume, luminosità (WMI per il portatile, DDC/CI per i monitor), Wi-Fi e Bluetooth (Windows.Devices.Radios), collegamenti a ms-settings per luce notturna. Popup di volume al centro in alto quando cambia.</p></div>
+</div>
+
+<!-- FASE 6 + 7 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">6</span><span class="phase-title">Notifiche</span></div>
+  <div class="meta">Tempo indicativo: 1 giorno · Difficoltà: media (per via del pacchetto)</div>
+  <p><b>Cosa deve fare:</b> quando arriva una notifica, compare per qualche secondo nella pillola con l'icona vera dell'app. Poi finisce in una lista ordinata nella scheda Notifiche. Con la rotella si scorrono quelle impilate.</p>
+  <h3>Come</h3>
+<pre><code>using Windows.UI.Notifications.Management;
+var listener = UserNotificationListener.Current;
+if (await listener.RequestAccessAsync() != UserNotificationListenerAccessStatus.Allowed) return;
+var list = await listener.GetNotificationsAsync(NotificationKinds.Toast);
+foreach (var n in list) {
+    var app = n.AppInfo.DisplayInfo.DisplayName;
+    var texts = n.Notification.Visual.GetBinding(KnownNotificationBindings.ToastGeneric)?.GetTextElements();
+}</code></pre>
+  <div class="box warn"><span class="lab">Trappola importante</span>Questa API funziona solo se l'app ha un'<b>identità di pacchetto</b>, cioè se gira come MSIX (fase 13). Per svilupparla prima, fai girare il progetto di pacchetto da Visual Studio. L'evento <code>NotificationChanged</code> poi non sempre arriva alle app desktop: tieni un controllo ogni 2 secondi come riserva, e confronta gli <code>Id</code> per sapere quali sono nuove.</div>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 6: modulo Notifications con UserNotificationListener (richiede identità di pacchetto: prepara anche un progetto MSIX minimo in src/Isola.Package per farlo girare). Evento NotificationChanged più controllo ogni 2 s come riserva, nuove notifiche riconosciute dall'Id. Nella pillola per N secondi (impostabile) con icona dell'app, impilate e sfogliabili con la rotella; scheda con la lista, Canc toglie quella sotto il mouse. Niente lascia il PC.</p></div>
+
+  <div class="phase-head" style="margin-top:7mm"><span class="phase-num">7</span><span class="phase-title">Promemoria, widget, orologio Day</span></div>
+  <div class="meta">Tempo indicativo: 2 giorni · Difficoltà: bassa, ma tanti pezzi</div>
+  <ul>
+    <li><b>Promemoria:</b> testo, ora, ripetizione (ogni giorno, giorni feriali, ogni settimana). Salvati in SQLite. Un solo timer che punta al prossimo promemoria (non un timer al secondo). Quando scatta, l'isola scende anche sopra un gioco con "Posticipa 10 min" e "Fatto". Dopo un riavvio del PC, ricalcola il prossimo.</li>
+    <li><b>Widget:</b> orologio (12 o 24 ore seguendo Windows), fusi orari (<code>TimeZoneInfo</code>), meteo, to-do, foto, batterie (portatile con <code>SystemInformation.PowerStatus</code>, cuffie e mouse Bluetooth con <code>Windows.Devices.Enumeration</code> e la proprietà della batteria), timer di concentrazione, statistiche del PC (dalla fase 10).</li>
+    <li><b>Meteo senza chiave:</b> Open-Meteo, <code>https://api.open-meteo.com/v1/forecast?latitude=…&amp;longitude=…&amp;current=temperature_2m,weather_code</code>. La città la scrive l'utente (geocoding di Open-Meteo), niente posizione automatica.</li>
+    <li><b>Fissare un widget sul desktop:</b> una finestra senza bordi e trasparente che sta sempre sotto, con <code>SetWindowPos(hwnd, HWND_BOTTOM, …)</code> rimesso ogni volta che viene attivata. È la strada semplice. Quella "vera" è mettere la finestra dentro il desktop (la finestra <code>WorkerW</code> dietro le icone, come fanno Lively e Wallpaper Engine), ma su Windows 11 24H2 la struttura è cambiata e va verificata a mano.</li>
+    <li><b>Orologio Day</b> (la scritta "SUNDAY" del reel): è un widget come gli altri, testo grande con lettere spaziate (<code>Typography</code>/<code>CharacterSpacing</code>), senza sfondo, colore a scelta, nessun clic (<code>WS_EX_TRANSPARENT</code>).</li>
+    <li><b>Faccia a riposo:</b> cosa mostra la pillola chiusa quando non suona niente: ora, data, meteo, batteria, CPU, prossimo promemoria. Una scelta nelle impostazioni.</li>
+  </ul>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 7: moduli Reminders e Widgets. Promemoria con ripetizioni in SQLite e un solo timer verso il prossimo; quando scatta l'isola scende anche sopra le app a schermo intero con Posticipa e Fatto. Widget: orologio, fusi, meteo da Open-Meteo con città scritta dall'utente, to-do, batterie, timer. Ogni widget si può fissare sul desktop come finestra trasparente HWND_BOTTOM. Widget "Day" con il nome del giorno in maiuscolo, lettere spaziate, senza sfondo, colore a scelta, clic che passano attraverso. Scelta della faccia a riposo nelle impostazioni.</p></div>
+</div>
+
+<!-- FASE 8 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">8</span><span class="phase-title">Agenti di Claude Code</span></div>
+  <div class="meta">Tempo indicativo: mezza giornata · Difficoltà: bassa · Per te è la più utile</div>
+  <h3>Cosa deve fare</h3>
+  <p>Per ogni sessione di Claude Code aperta: in che cartella lavora, cosa sta facendo adesso (quale strumento usa), se ha finito, e soprattutto <b>quando ti aspetta</b> (un permesso da dare, una domanda). In quel caso la pillola si illumina e resta così finché non rispondi.</p>
+  <h3>Come: gli hook di Claude Code</h3>
+  <p>Claude Code può lanciare un comando a ogni evento e gli passa i dettagli in JSON su stdin. L'isola apre un piccolo server solo su <code>127.0.0.1</code> e gli hook ci mandano quel JSON con <code>curl</code> (che su Windows 10 e 11 c'è già). Nel file <code>~/.claude/settings.json</code>:</p>
+<pre><code>{
+  "hooks": {
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "curl -s -m 1 -X POST http://127.0.0.1:47321/agent --data-binary @-" }] }],
+    "PreToolUse":       [{ "matcher": "*", "hooks": [{ "type": "command", "command": "curl -s -m 1 -X POST http://127.0.0.1:47321/agent --data-binary @-" }] }],
+    "Notification":     [{ "hooks": [{ "type": "command", "command": "curl -s -m 1 -X POST http://127.0.0.1:47321/agent --data-binary @-" }] }],
+    "Stop":             [{ "hooks": [{ "type": "command", "command": "curl -s -m 1 -X POST http://127.0.0.1:47321/agent --data-binary @-" }] }]
+  }
+}</code></pre>
+  <ul>
+    <li>Il JSON contiene <code>session_id</code>, <code>cwd</code>, <code>hook_event_name</code> e, per <code>PreToolUse</code>, <code>tool_name</code>. Stato della sessione: <code>UserPromptSubmit</code> = al lavoro, <code>PreToolUse</code> = "sta usando Bash / Edit…", <code>Notification</code> = <b>ti aspetta</b>, <code>Stop</code> = finito.</li>
+    <li><code>-m 1</code> fa scadere <code>curl</code> dopo un secondo: se l'isola è chiusa, Claude Code non si blocca.</li>
+    <li>Lato isola: <code>HttpListener</code> su <code>http://127.0.0.1:47321/</code>. Una sessione senza eventi da 30 minuti sparisce dalla lista.</li>
+    <li>Cliccando una sessione, l'isola porta in primo piano la finestra giusta (il terminale o l'app di Claude) cercandola per titolo con <code>EnumWindows</code>.</li>
+    <li>Codex e altri agenti: stesso server, basta che mandino lo stesso JSON. Se non hanno hook, si legge il loro file di log.</li>
+  </ul>
+  <div class="box warn"><span class="lab">Sicurezza</span>Ascolta solo su <code>127.0.0.1</code>, mai su <code>0.0.0.0</code>: questo server non deve essere raggiungibile dalla rete. E l'isola si limita a leggere: non deve poter mandare comandi a Claude Code.</div>
+  <p class="done"><b>Finita quando:</b> con due sessioni di Claude Code aperte vedi le due cartelle, cosa fanno, e la pillola si illumina appena una chiede un permesso.</p>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 8: modulo Agents. HttpListener solo su http://127.0.0.1:47321/agent che riceve il JSON degli hook di Claude Code (session_id, cwd, hook_event_name, tool_name). Stati: UserPromptSubmit = al lavoro, PreToolUse = usa {tool_name}, Notification = ti aspetta, Stop = finito; sessioni senza eventi da 30 min tolte. Pillola che si illumina finché una sessione aspetta. Scheda con una riga per sessione (nome cartella, stato, da quanto); clic = porta in primo piano la sua finestra. Poi proponimi la modifica a ~/.claude/settings.json con gli hook curl -s -m 1, ma non applicarla finché non dico sì.</p></div>
+</div>
+
+<!-- FASE 9 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">9</span><span class="phase-title">File al telefono e PC Deck</span></div>
+  <div class="meta">Tempo indicativo: 2 giorni · Difficoltà: media · Spento di default</div>
+  <h3>Cosa deve fare</h3>
+  <ul>
+    <li><b>File al telefono:</b> dalla mensola premi "Al telefono", compare un QR, il telefono lo inquadra con la fotocamera e apre una pagina da cui scaricare i file e caricarne di nuovi verso il PC. Niente app, niente account, stessa Wi-Fi.</li>
+    <li><b>PC Deck:</b> il telefono diventa un trackpad, un telecomando per la musica, un lanciatore di app, con tasti per presentazioni e film.</li>
+  </ul>
+  <h3>Come</h3>
+  <ul>
+    <li><b>Server:</b> Kestrel (ASP.NET Core minimal API) dentro l'app, su una porta casuale, in ascolto sull'IP della rete locale. Le pagine per il telefono sono HTML + JS semplici, incluse nell'app (<code>src/Isola/Web</code>).</li>
+    <li><b>HTTPS:</b> un certificato autofirmato generato al primo avvio con <code>CertificateRequest</code> e salvato in locale. Il telefono mostrerà un avviso la prima volta: è normale, e va scritto nella pagina di aiuto.</li>
+    <li><b>Chiave nell'indirizzo:</b> il QR contiene <code>https://192.168.x.y:PORTA/?k=CHIAVE</code>, con 32 byte casuali (<code>RandomNumberGenerator</code>). Ogni richiesta senza la chiave giusta riceve 404. Per i file, il server è acceso solo finché il QR è a schermo.</li>
+    <li><b>Solo reti private:</b> controlla la categoria della rete con <code>INetworkListManager</code> (COM): se Windows la considera Pubblica, PC Deck non parte.</li>
+    <li><b>Un telefono alla volta, approvato:</b> la prima connessione di un telefono fa comparire nell'isola "Consenti questo telefono?".</li>
+    <li><b>Trackpad:</b> la pagina manda gli spostamenti del dito via WebSocket; il PC li applica con <code>SendInput</code> (<code>MOUSEEVENTF_MOVE</code>, clic, rotella). Musica: gli stessi comandi della fase 2. Presentazioni: frecce e F5 con <code>SendInput</code> da tastiera.</li>
+    <li><b>QR:</b> <code>QRCoder</code> → <code>PngByteQRCode</code> → immagine nell'isola.</li>
+  </ul>
+  <div class="box warn"><span class="lab">Sicurezza</span>Questa è la funzione più delicata: chi ha la chiave controlla mouse e tastiera del PC. Quindi spenta di default, chiave nuova a ogni attivazione, approvazione di ogni telefono, solo rete privata, e il firewall di Windows chiederà il permesso la prima volta (rispondi solo "Reti private"). Prima di usarla davvero, falla rivedere con la skill security-review.</div>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 9: modulo Phone. Kestrel minimal API dentro l'app su porta casuale e IP locale, HTTPS con certificato autofirmato creato una volta, chiave casuale da 32 byte nell'URL e controllata a ogni richiesta (404 se manca). Parte solo se la rete è Privata (INetworkListManager). QR con QRCoder. Pagina "File": scarica i file della mensola, carica file in Download, server attivo solo col QR a schermo. Pagina "Deck" (attivabile a parte): trackpad via WebSocket → SendInput, tasti musica, frecce e F5. Ogni telefono nuovo va approvato dall'isola. Alla fine passa il modulo alla skill security-review.</p></div>
+</div>
+
+<!-- FASE 10 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">10</span><span class="phase-title">Striscia giochi</span></div>
+  <div class="meta">Tempo indicativo: 2 giorni · Difficoltà: medio-alta</div>
+  <p><b>Cosa deve fare:</b> sopra un gioco, l'isola diventa una striscia sottile con FPS, CPU, GPU, RAM, rete e (se vuoi) temperature, aggiornati 10 volte al secondo. I promemoria scendono anche lì.</p>
+  <h3>Come, pezzo per pezzo</h3>
+  <table>
+    <tr><th style="width:18%">Dato</th><th>Come</th></tr>
+    <tr><td>FPS</td><td>Gli eventi ETW di DirectX (i "Present" del gioco). Lo strumento pronto è <b>PresentMon</b> di Intel (open source, MIT): lancialo come processo figlio limitato al gioco in primo piano e leggi il suo output. Le opzioni esatte cambiano tra le versioni: controllale con <code>--help</code>. Richiede di essere amministratore o nel gruppo "Performance Log Users".</td></tr>
+    <tr><td>CPU</td><td>Contatore PDH <code>\Processor Information(_Total)\% Processor Utility</code> (è quello del Task Manager) con <code>PerformanceCounter</code></td></tr>
+    <tr><td>GPU</td><td>Contatori <code>\GPU Engine(*engtype_3D)\Utilization Percentage</code>: somma per scheda video, come fa il Task Manager</td></tr>
+    <tr><td>RAM</td><td><code>GlobalMemoryStatusEx</code></td></tr>
+    <tr><td>Rete</td><td><code>NetworkInterface.GetIPv4Statistics()</code>, differenza dei byte tra due letture</td></tr>
+    <tr><td>Temperature</td><td><code>LibreHardwareMonitorLib</code>. Facoltativo, vedi sotto.</td></tr>
+  </table>
+  <ul>
+    <li>Leggi i dati solo quando la striscia è visibile. Quando non c'è un gioco, niente letture: è il segreto dello 0% di CPU.</li>
+    <li>"È un gioco?": schermo intero (fase 1) più un elenco di processi conosciuti, più una lista che l'utente può modificare. Le regole per app ("questa app: striscia sottile / normale / nascosta") vanno nelle impostazioni.</li>
+    <li>Nessuna sovrapposizione è possibile in <b>schermo intero esclusivo</b>: lì niente può disegnare sopra un gioco. Funziona in "finestra senza bordi", che oggi è il default di quasi tutti i giochi.</li>
+  </ul>
+  <div class="box warn"><span class="lab">Temperature e driver</span>Leggere le temperature della CPU richiede un driver a livello di kernel. Il vecchio driver WinRing0 usato da molti programmi è stato segnalato come vulnerabile e viene bloccato da Windows Defender; le versioni recenti di LibreHardwareMonitor sono passate ad altro. Usa solo la versione più recente, fai partire le temperature solo se l'utente le accende, e accetta che sui PC fissi spesso Windows non dia la temperatura vera della CPU.</div>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 10: modulo Games. Striscia sopra le app a schermo intero riconosciute come giochi (lista conosciuta + lista utente + regole per app). CPU e GPU con i contatori PDH del Task Manager, RAM con GlobalMemoryStatusEx, rete dalle statistiche delle interfacce, aggiornate 10 volte al secondo solo mentre la striscia è visibile. FPS con PresentMon come processo figlio sul processo in primo piano: controlla le opzioni con --help della versione scaricata e gestisci il caso senza permessi mostrando "FPS: serve admin". Temperature con LibreHardwareMonitorLib solo se attivate, versione più recente. Prova con un gioco in finestra senza bordi.</p></div>
+</div>
+
+<!-- FASE 11 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">11</span><span class="phase-title">Il vetro</span></div>
+  <div class="meta">Tempo indicativo: 3–5 giorni · Difficoltà: alta · È quello che fa "wow"</div>
+  <p>Ci sono due strade. Fai prima la A: in un'ora hai un risultato bello. La B è il vero effetto Liquid Glass, che piega quello che c'è dietro.</p>
+  <h3>Strada A · Il vetro di Windows (Acrylic)</h3>
+  <ul>
+    <li>Su Windows 11 22H2 e successivi: <code>DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE = 38, DWMSBT_TRANSIENTWINDOW = 3)</code> dà l'Acrylic, la sfocatura ufficiale. Angoli arrotondati con <code>DWMWA_WINDOW_CORNER_PREFERENCE = 33</code>.</li>
+    <li>Il problema: funziona su finestre "normali", non su quelle WPF con <code>AllowsTransparency</code>. Serve una finestra a parte per lo sfondo di vetro, senza <code>AllowsTransparency</code>, con <code>WindowChrome</code> e <code>DwmExtendFrameIntoClientArea</code> a <code>-1</code>, che si muove e ridimensiona insieme all'isola. La forma arrotondata si ottiene con <code>SetWindowRgn</code>.</li>
+    <li>Su Windows 10 l'equivalente è <code>SetWindowCompositionAttribute</code> con <code>ACCENT_ENABLE_ACRYLICBLURBEHIND</code>: non documentato, ma lo usano in tanti (TranslucentTB compreso).</li>
+  </ul>
+  <h3>Strada B · Vetro vero, che rifrange</h3>
+  <ol>
+    <li><b>Cattura quello che c'è dietro.</b> <code>Windows.Graphics.Capture</code> sul monitor (o, più veloce, DXGI Desktop Duplication), ritaglio della zona sotto l'isola più un margine.</li>
+    <li><b>Togli l'isola dalla cattura</b>, sennò vede sé stessa all'infinito: <code>SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)</code> (Windows 10 2004+). Effetto collaterale: l'isola di vetro non compare negli screenshot e nelle registrazioni. È esattamente il difetto di cui si lamentano gli utenti di NotchPixel nei commenti del reel.</li>
+    <li><b>Lo shader.</b> In Direct3D 11 (<code>Vortice.Direct3D11</code>), un pixel shader che per ogni punto calcola la distanza dal bordo della forma arrotondata (una "signed distance function"). Vicino al bordo sposta la lettura dell'immagine verso l'esterno: è la rifrazione. Poi una sfocatura leggera, una piccola separazione dei colori ai bordi, un riflesso in alto.</li>
+    <li><b>Mostralo.</b> Una swap chain con trasparenza (<code>CreateSwapChainForComposition</code> + DirectComposition) dentro la finestra di vetro.</li>
+    <li><b>Non sprecare la GPU.</b> Ridisegna solo quando la cattura dice che lo schermo è cambiato (<code>FrameArrived</code> arriva solo se c'è qualcosa di nuovo). Schermo fermo = zero lavoro.</li>
+  </ol>
+  <div class="box warn"><span class="lab">Per gli screenshot</span>Dai un'opzione "Mostra l'isola negli screenshot". Quando è accesa, usa la strada A (o il tema nero) invece del vetro vero, perché con il vetro vero l'esclusione dalla cattura è obbligatoria.</div>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 11, parte A: tema Acrylic. Finestra di sfondo separata che segue l'isola, senza AllowsTransparency, con DWMWA_SYSTEMBACKDROP_TYPE = 3 su Windows 11 e ACCENT_ENABLE_ACRYLICBLURBEHIND su Windows 10, forma con SetWindowRgn, angoli DWM. Fermati e fammela vedere. Parte B (solo dopo il mio ok): tema Glass con Windows.Graphics.Capture della zona sotto l'isola, SetWindowDisplayAffinity WDA_EXCLUDEFROMCAPTURE, pixel shader D3D11 (Vortice) con SDF del rettangolo arrotondato, rifrazione ai bordi, sfocatura leggera e riflesso, swap chain DirectComposition, ridisegno solo su FrameArrived. Misura la CPU a schermo fermo: deve stare a 0%.</p></div>
+</div>
+
+<!-- FASE 12 + 13 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">12</span><span class="phase-title">Web drawer e streaming</span></div>
+  <div class="meta">Tempo indicativo: 1–2 giorni · Difficoltà: media</div>
+  <ul>
+    <li><b>Web drawer:</b> fissi un sito (le tue note, la chat di un corso, una calcolatrice) e si apre in un cassetto arrotondato sotto l'isola, anche sopra un gioco. Si fa con <b>WebView2</b>, il motore di Edge.</li>
+    <li><b>Trappola:</b> WebView2 <b>non si vede</b> dentro una finestra WPF con <code>AllowsTransparency</code> (il problema dello "spazio aereo"). Il cassetto deve essere una finestra sua, non trasparente, attaccata sotto l'isola.</li>
+    <li><b>Chat di Twitch:</b> WebSocket su <code>wss://irc-ws.chat.twitch.tv:443</code>, accesso anonimo con un nome tipo <code>justinfan12345</code>, <code>JOIN #canale</code>. Per leggere non serve nessuna chiave.</li>
+    <li><b>Chat di YouTube:</b> la YouTube Data API (<code>liveChatMessages</code>) chiede una chiave e ha limiti di quota. Più semplice: aprire la chat "popout" di YouTube nel web drawer.</li>
+    <li><b>OBS:</b> obs-websocket è già dentro OBS 28 e successivi, porta 4455. Ascolta l'evento <code>RecordStateChanged</code> e mostra la pillola REC con il tempo.</li>
+  </ul>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 12: modulo Stream e web drawer. Il drawer è una finestra separata non trasparente con WebView2, attaccata sotto l'isola, che resta sopra anche alle app a schermo intero; siti fissati nelle impostazioni. Chat di Twitch anonima via IRC WebSocket in un cassetto spostabile. YouTube: apri la chat popout nel drawer. OBS: client obs-websocket v5 su localhost:4455 (password facoltativa) e pillola REC con il tempo su RecordStateChanged.</p></div>
+
+  <div class="phase-head" style="margin-top:7mm"><span class="phase-num">13</span><span class="phase-title">Impostazioni, avvio e Store</span></div>
+  <div class="meta">Tempo indicativo: 1–2 giorni · Difficoltà: media</div>
+  <ul>
+    <li><b>Impostazioni:</b> una finestra normale (questa sì con il focus), con una pagina per modulo e un interruttore per accenderlo o spegnerlo. Salvate in JSON in <code>%LocalAppData%\Isola\settings.json</code>; ogni modifica si applica subito.</li>
+    <li><b>Lingue:</b> file <code>.resx</code>, italiano e inglese per cominciare.</li>
+    <li><b>Avvio con Windows:</b> nel pacchetto MSIX con l'estensione <code>windows.startupTask</code>; senza pacchetto, una voce in <code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code>.</li>
+    <li><b>Pacchetto MSIX:</b> un "Windows Application Packaging Project" in <code>src/Isola.Package</code>. Serve comunque per le notifiche (fase 6).</li>
+    <li><b>Microsoft Store:</b> account sviluppatore su Partner Center (dal 2025 la registrazione per i singoli sviluppatori è diventata gratuita: verifica le condizioni attuali). Prova gratuita e acquisto si gestiscono dallo Store; nel codice <code>StoreContext.GetDefault()</code> → <code>GetAppLicenseAsync()</code> → <code>IsTrial</code>. Nelle app desktop va collegato alla finestra con <code>InitializeWithWindow</code>.</li>
+    <li><b>Privacy policy:</b> lo Store la chiede. Impostazione semplice: niente account, niente telemetria, cosa va in rete e solo se l'utente lo attiva (testi, meteo, chat).</li>
+  </ul>
+  <div class="box warn"><span class="lab">Nome e marchi</span>"Dynamic Island" è un marchio di Apple: puoi scrivere "in stile Dynamic Island" nella descrizione, ma non usarlo come nome né usare loghi Apple. Non copiare grafica, icone o testi di NotchPixel: le funzioni si possono rifare, l'aspetto va disegnato da te.</div>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 13: finestra Impostazioni con una pagina per modulo e un interruttore ciascuno, salvataggio JSON in %LocalAppData%\Isola applicato a caldo, stringhe in .resx italiano e inglese. Progetto MSIX in src/Isola.Package con startupTask. Licenza dallo Store con StoreContext (IsTrial) collegato alla finestra con InitializeWithWindow, e modalità "senza Store" per lo sviluppo. Bozza della privacy policy in docs/privacy.md.</p></div>
+</div>
+
+<!-- FASE 14 -->
+<div class="phase">
+  <div class="phase-head"><span class="phase-num">14</span><span class="phase-title">La barra delle applicazioni</span></div>
+  <div class="meta">Tempo indicativo: 1–2 settimane · Difficoltà: alta · Consiglio: lasciala per ultima, o salta</div>
+  <p><b>Cosa fa in NotchPixel:</b> un notch in basso al posto della barra di Windows, con Start, app fissate e aperte, icone di sistema, impostazioni rapide e orologio. Spenta di default; spegnendola torna quella di Windows.</p>
+  <h3>Perché è difficile</h3>
+  <ul>
+    <li><b>Nascondere la barra di Windows:</b> <code>ShowWindow(FindWindow("Shell_TrayWnd", null), SW_HIDE)</code>, più la stessa cosa per <code>Shell_SecondaryTrayWnd</code> sugli altri monitor. Va ripetuto quando Esplora risorse si riavvia (messaggio <code>TaskbarCreated</code>), e <b>va sempre ripristinata</b> alla chiusura, anche se l'app crasha (gestore per le eccezioni non gestite).</li>
+    <li><b>Riservare lo spazio:</b> registra la tua barra come "appbar" con <code>SHAppBarMessage(ABM_NEW / ABM_SETPOS)</code>, così le finestre massimizzate non ci finiscono sotto.</li>
+    <li><b>App aperte:</b> <code>EnumWindows</code> filtrando le finestre visibili, senza proprietario e senza <code>WS_EX_TOOLWINDOW</code>; più un hook (<code>RegisterShellHookWindow</code>) per sapere quando se ne aprono o chiudono. Icone con <code>WM_GETICON</code> o dal file del programma.</li>
+    <li><b>App fissate:</b> i collegamenti in <code>%AppData%\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar</code>.</li>
+    <li><b>Start:</b> simula il tasto Windows con <code>SendInput(VK_LWIN)</code>.</li>
+    <li><b>Icone di sistema (Wi-Fi, volume, app in background):</b> è il pezzo più duro. Le app parlano con la barra di Windows tramite <code>Shell_NotifyIcon</code>; per mostrarle nella tua serve diventare tu il destinatario di quei messaggi, come fanno ExplorerPatcher e simili. Alternativa onesta: un pulsante "^" che apre il pannello delle icone nascoste di Windows.</li>
+  </ul>
+  <div class="box prompt"><span class="lab">Prompt per Claude Code</span>
+  <p>Fase 14 (sperimentale, dietro un'opzione spenta): barra Isola in basso. Nascondi Shell_TrayWnd e Shell_SecondaryTrayWnd e ripristinali sempre all'uscita e in caso di crash; gestisci TaskbarCreated. Appbar con SHAppBarMessage. Start con VK_LWIN, app fissate dalla cartella User Pinned\TaskBar, app aperte con EnumWindows + RegisterShellHookWindow, orologio e controlli rapidi riusando i moduli esistenti. Per le icone di sistema solo un pulsante che apre l'area nascosta di Windows. Prima di scrivere codice dimmi i rischi per la stabilità.</p></div>
+
+  <h2 style="margin-top:9mm">D · Ordine, tempi, rischi</h2>
+  <table>
+    <tr><th style="width:30%">Blocco</th><th style="width:16%">Fasi</th><th style="width:22%">Tempo</th><th>Risultato</th></tr>
+    <tr><td>Il cuore</td><td>0–4</td><td>~1 settimana</td><td>Isola con musica, appunti e mensola. Già da usare tutti i giorni.</td></tr>
+    <tr><td>Il quotidiano</td><td>5–8</td><td>~1 settimana</td><td>Muto, notifiche, promemoria, widget, agenti di Claude Code.</td></tr>
+    <tr><td>Gli extra</td><td>9–12</td><td>~2 settimane</td><td>Telefono, giochi, vetro, web e streaming.</td></tr>
+    <tr><td>Uscire nel mondo</td><td>13</td><td>2–3 giorni + revisione dello Store</td><td>Pacchetto, impostazioni, Store.</td></tr>
+    <tr><td>Facoltativo</td><td>14</td><td>1–2 settimane</td><td>La barra delle applicazioni.</td></tr>
+  </table>
+  <p class="small">I tempi sono per sessioni serali con Claude Code e presuppongono che ogni fase venga provata a mano prima di passare alla successiva.</p>
+  <h3>I rischi principali</h3>
+  <ul>
+    <li><b>Concorrenza:</b> NotchPixel costa 9,99 $ ed è aggiornata ogni pochi giorni; ci sono anche alternative gratis. Se l'idea è venderla, serve un motivo per sceglierla (per esempio gli agenti di Claude Code fatti meglio di tutti, o l'integrazione con le proprie app). Se è per te, il problema non c'è.</li>
+    <li><b>Sicurezza:</b> le fasi 8 e 9 aprono dei server. La 8 solo in locale, la 9 sulla rete di casa: sono le due da rivedere con più attenzione.</li>
+    <li><b>Stabilità:</b> la fase 14 tocca la barra di Windows. Se si rompe, il PC resta senza barra finché non riavvii Esplora risorse.</li>
+  </ul>
+  <p class="small" style="margin-top:6mm">Fonti: notchpixel.com, notchpixel.com/press (versione 0.5.97 del 9/11/2026), documentazione Microsoft delle API citate, LRCLIB, Open-Meteo, obs-websocket. NotchPixel e Dynamic Island appartengono ai rispettivi proprietari; questa guida non è collegata a loro.</p>
+</div>
+
+</body>
+</html>

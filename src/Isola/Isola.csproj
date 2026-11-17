@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <!-- Only for NotifyIcon (tray) and Screen (monitor list). -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Isola</RootNamespace>
+    <AssemblyName>Isola</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\isola.ico</ApplicationIcon>
+    <Product>Isola</Product>
+    <AssemblyTitle>Isola</AssemblyTitle>
+    <Description>Isola: l'isola dinamica per Windows</Description>
+    <Company>Isola</Company>
+    <Copyright>© 2026 Alessandro</Copyright>
+    <Version>0.1.0</Version>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <!-- Only Italian and English satellite resources of WPF/WinForms (the UI is Italian). -->
+    <SatelliteResourceLanguages>it;en</SatelliteResourceLanguages>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- WFO0003 suggests ApplicationHighDpiMode (WinForms-only); WPF needs the PerMonitorV2 manifest. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <!-- Shipping: tools/publish.ps1 (dotnet publish, Release, win-x64, self-contained,
+       PublishSingleFile, IncludeNativeLibrariesForSelfExtract, output "publish").
+       One self-contained exe (no trimming: WPF, WinRT projections and reflection-discovered modules
+       don't survive it). Symbols are embedded. No compression: a compressed bundle is ~76 MB
+       instead of ~180 MB, but every assembly is then inflated into private memory at start
+       (measured idle: 362 MB working set / 199 MB private vs 177 / 80 MB), and Isola runs all day. -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <DebugType>embedded</DebugType>
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+
+  <!-- WinForms and WPF share type names (Application, MessageBox, Color, Point...).
+       Keep WinForms/System.Drawing out of the implicit usings and qualify them where used. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <!-- WPF leaves System.IO out (Path clashes with System.Windows.Shapes.Path); we want it. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <!-- Theme "Liquido" (Backdrops/): desktop duplication + D3D11 shader + DirectComposition. -->
+  <ItemGroup>
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <PackageReference Include="Vortice.DXGI" Version="3.8.3" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
+    <PackageReference Include="Vortice.DirectComposition" Version="3.8.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\isola.ico" />
+    <None Include="Core\MODULES.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="System.Management" Version="9.0.0" />
+    <!-- DPAPI (CurrentUser) for the Spotify refresh token (Modules/Music). -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>
