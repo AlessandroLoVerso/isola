@@ -37,6 +37,7 @@ moduli: li trova nel registro `Sources/IsolaApp/ModuleRegistry.swift`.
 | `RestingFaceProvider` | no | Cosa mostrare accanto alla notch a isola chiusa |
 | `PeekProvider` | no | La riga sotto la notch quando chiami `host.attention(duration:)` |
 | `StripProvider` | no | Cosa mostrare accanto alla notch sopra le app a schermo intero |
+| `FileDropHandler` | no | Ricevere i file lasciati in qualsiasi punto dell'isola |
 
 ### IslandModule
 
@@ -76,6 +77,14 @@ moduli: li trova nel registro `Sources/IsolaApp/ModuleRegistry.swift`.
 
 - `wantsStrip` + `makeStrip() -> RestingFace`: usata sopra le app a schermo intero se l'utente ha
   scelto "Striscia". Quando `wantsStrip` cambia, chiama `host.refreshRestingFace()`.
+
+### FileDropHandler
+
+- `acceptFiles(_ providers: [NSItemProvider]) -> Bool`: i file lasciati sull'isola fuori dalla
+  tua scheda (titolo, riga delle schede, pillola chiusa). Quando un file entra nell'isola si apre
+  la tua scheda. Vince il primo modulo acceso in ordine di scheda; oggi è la Mensola. Rispondi
+  `false` se in quel momento non li vuoi (per esempio se il trascinamento parte da te). La tua
+  scheda può comunque avere il suo `.onDrop`: sulla scheda vince quello.
 
 ### IslandHost (quello che ricevi)
 

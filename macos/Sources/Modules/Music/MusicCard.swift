@@ -36,6 +36,26 @@ struct MusicCard: View {
     // MARK: - Vuota
 
     private var empty: some View {
+        Group {
+            if showsLibrary {
+                library
+            } else {
+                emptyPrompt
+            }
+        }
+        .onAppear { controller?.loadShortcuts() }
+        .onChange(of: spotify.link) { _, link in
+            if link == .connected { controller?.loadShortcuts() }
+        }
+    }
+
+    /// Spotify collegato e installato: al posto dei due pulsanti, cosa far partire.
+    private var showsLibrary: Bool {
+        !model.needsConsent && spotify.link == .connected && !spotify.shortcuts.isEmpty
+            && MusicLauncher.installed.contains(MusicLauncher.spotify)
+    }
+
+    private var emptyPrompt: some View {
         VStack(spacing: 10) {
             IslandEmptyState("music.note", title: "Niente in riproduzione",
                              subtitle: model.source == .fallback
@@ -53,6 +73,58 @@ struct MusicCard: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var library: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text("Cosa ascolti?")
+                    .font(IslandFont.bodyBold)
+                    .foregroundStyle(theme.foreground)
+                Spacer(minLength: 8)
+                ForEach(MusicLauncher.installed) { p in
+                    Button {
+                        model.onLaunch(p)
+                    } label: {
+                        HStack(spacing: 5) {
+                            if model.launching == p.id {
+                                ProgressView().controlSize(.mini).tint(theme.foreground)
+                                    .frame(width: 10, height: 10)
+                            } else {
+                                Image(systemName: "play.fill").font(.system(size: 9, weight: .bold))
+                            }
+                            Text(p.name)
+                        }
+                        .font(IslandFont.small)
+                    }
+                    .buttonStyle(IslandButtonStyle(prominent: false))
+                    .disabled(model.launching != nil)
+                    .help(p == MusicLauncher.spotify ? "Riprendi l'ultimo ascolto su Spotify" : "Riprendi su Musica")
+                }
+            }
+            if !model.launchMessage.isEmpty {
+                Text(model.launchMessage)
+                    .font(IslandFont.small)
+                    .foregroundStyle(theme.muted)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)], spacing: 4) {
+                    ForEach(spotify.shortcuts) { s in
+                        ShortcutTile(shortcut: s, busy: model.launching == s.id) { model.onPlayShortcut(s) }
+                            .disabled(model.launching != nil)
+                    }
+                }
+                .padding(.bottom, 14)
+            }
+            .scrollIndicators(.never)
+            .mask(LinearGradient(stops: [.init(color: .black, location: 0.82), .init(color: .clear, location: 1)],
+                                 startPoint: .top, endPoint: .bottom))
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     /// "Suona su Spotify" / "Musica": apre l'app senza portarla davanti e fa partire la musica.
@@ -85,6 +157,10 @@ struct MusicCard: View {
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 420)
+            } else if spotify.link == .disconnected, players.contains(MusicLauncher.spotify) {
+                Text("Collega Spotify nelle impostazioni per scegliere una playlist da qui.")
+                    .font(IslandFont.small)
+                    .foregroundStyle(theme.muted)
             }
         }
     }
@@ -305,5 +381,69 @@ private struct ProgressRow: View {
                 scrub = nil
                 onSeek(f * duration)
             }
+    }
+}
+
+/// Una playlist (o i preferiti) nella scheda vuota: un clic e parte su Spotify.
+private struct ShortcutTile: View {
+    let shortcut: SpotifyShortcut
+    let busy: Bool
+    let action: () -> Void
+    @Environment(\.island) private var theme
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                art
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(shortcut.name)
+                        .font(IslandFont.bodyBold)
+                        .foregroundStyle(theme.foreground)
+                        .lineLimit(1)
+                    Text(shortcut.detail)
+                        .font(IslandFont.small)
+                        .foregroundStyle(theme.muted)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                if busy {
+                    ProgressView().controlSize(.small).tint(theme.foreground)
+                        .frame(width: 14, height: 14)
+                } else if hover {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(theme.foreground)
+                }
+            }
+            .padding(5)
+            .padding(.trailing, 4)
+            .frame(height: 44)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(hover ? theme.surfaceHover : theme.surface))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .help("Suona su Spotify")
+    }
+
+    @ViewBuilder private var art: some View {
+        if shortcut.liked {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(LinearGradient(colors: [Color(red: 0.27, green: 0.16, blue: 0.86), Color(red: 0.62, green: 0.78, blue: 0.95)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .overlay(Image(systemName: "heart.fill").font(.system(size: 13, weight: .bold)).foregroundStyle(.white))
+                .frame(width: 34, height: 34)
+        } else {
+            AsyncImage(url: shortcut.imageURL) { img in
+                img.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                Rectangle().fill(theme.surfaceHover)
+                    .overlay(Image(systemName: "music.note.list").font(.system(size: 12)).foregroundStyle(theme.muted))
+            }
+            .frame(width: 34, height: 34)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
     }
 }

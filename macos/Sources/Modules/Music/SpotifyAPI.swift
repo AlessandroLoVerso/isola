@@ -21,6 +21,8 @@ struct SpotifyPlaylist: Sendable, Identifiable, Equatable {
     let count: Int
     let ownerId: String
     let collaborative: Bool
+    var uri: String = ""
+    var imageURL: URL? = nil
 }
 
 struct SpotifyMe: Sendable {
@@ -270,6 +272,21 @@ actor SpotifyAPI {
         return (all, .none)
     }
 
+    /// Tutte le playlist della libreria (anche quelle seguite), nell'ordine di Spotify, fino a `max`.
+    func libraryPlaylists(max: Int = 100) async -> ([SpotifyPlaylist]?, SpotifyError) {
+        var all: [SpotifyPlaylist] = []
+        var offset = 0
+        while offset < max {
+            let r = await send("GET", "/me/playlists?limit=50&offset=\(offset)")
+            guard r.ok else { return all.isEmpty ? (nil, r.error) : (all, .none) }
+            let (page, more) = Self.parsePlaylists(r.body)
+            all += page
+            if !more { break }
+            offset += 50
+        }
+        return (Array(all.prefix(max)), .none)
+    }
+
     /// POST /playlists/{id}/items (febbraio 2026); ripiego su /tracks.
     func addToPlaylist(_ playlistId: String, uri: String) async -> SpotifyError {
         let id = Self.esc(playlistId)
@@ -348,7 +365,9 @@ actor SpotifyAPI {
             // Febbraio 2026: "tracks" è diventato "items"; leggiamo quello che c'è.
             let t = (p["items"] as? [String: Any]) ?? (p["tracks"] as? [String: Any])
             let count = (t?["total"] as? NSNumber)?.intValue ?? 0
-            out.append(SpotifyPlaylist(id: id, name: str(p, "name") ?? "", count: count, ownerId: owner, collaborative: collab))
+            out.append(SpotifyPlaylist(id: id, name: str(p, "name") ?? "", count: count, ownerId: owner,
+                                       collaborative: collab, uri: str(p, "uri") ?? "spotify:playlist:\(id)",
+                                       imageURL: smallImage(p["images"])))
         }
         return (out, more)
     }
@@ -365,6 +384,20 @@ actor SpotifyAPI {
 
     static func isPremiumRequired(_ data: Data) -> Bool {
         str(obj(data)?["error"] as? [String: Any], "reason") == "PREMIUM_REQUIRED"
+    }
+
+    /// La più piccola immagine https di almeno 48 px (Spotify le elenca dalla più grande).
+    private static func smallImage(_ any: Any?) -> URL? {
+        guard let imgs = any as? [[String: Any]] else { return nil }
+        var image: String?
+        var best = Int.max
+        for img in imgs {
+            guard let url = str(img, "url") else { continue }
+            let w = (img["width"] as? NSNumber)?.intValue ?? 300
+            if w >= 48, w < best { best = w; image = url }
+            if image == nil { image = url }
+        }
+        return image.flatMap(URL.init(string:)).flatMap { $0.scheme == "https" ? $0 : nil }
     }
 
     private static func parseTrack(_ it: [String: Any]) -> SpotifyTrack? {

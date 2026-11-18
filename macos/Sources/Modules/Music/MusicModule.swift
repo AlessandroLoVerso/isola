@@ -134,7 +134,8 @@ public final class MusicModule: IslandModule, RestingFaceProvider, PeekProvider 
     }
 
     public func makeRestingFace() -> RestingFace {
-        RestingFace(leading: MusicFaceLeading(model: model), trailing: MusicFaceTrailing(model: model))
+        // Copertina ed equalizzatore sono piccoli: ali strette, l'isola resta poco più larga della notch.
+        RestingFace(sideWidth: 34, leading: MusicFaceLeading(model: model), trailing: MusicFaceTrailing(model: model))
     }
 
     public func makePeek() -> AnyView {
@@ -203,15 +204,17 @@ public final class MusicModule: IslandModule, RestingFaceProvider, PeekProvider 
         }
         model.onClientIdChange = { [weak self] id in self?.setClientId(id) }
         model.onLaunch = { [weak self] p in self?.launch(p) }
+        model.onPlayShortcut = { [weak self] s in self?.launch(MusicLauncher.spotify, uri: s.uri, key: s.id) }
     }
 
-    private func launch(_ player: MusicLauncher.Player) {
+    /// `key`: cosa mostra la rotellina (l'app o la playlist premuta).
+    private func launch(_ player: MusicLauncher.Player, uri: String? = nil, key: String? = nil) {
         guard running else { return }
         let l = launcher ?? MusicLauncher(log: { [weak self] in self?.host?.log($0) })
         launcher = l
         model.launchMessage = ""
-        model.launching = player.id
-        l.play(player) { [weak self] message in
+        model.launching = key ?? player.id
+        l.play(player, uri: uri) { [weak self] message in
             guard let self, self.running else { return }
             self.model.launching = nil
             self.model.launchMessage = message ?? ""

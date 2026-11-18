@@ -171,7 +171,7 @@ struct IslandRootView: View {
         .frame(width: s.outerWidth, height: s.height)
         .contentShape(shape)
         .onTapGesture { controller.clickedClosed() }
-        .onDrop(of: [.fileURL], isTargeted: $controller.dropHover) { _ in false }
+        .onDrop(of: [.fileURL], isTargeted: $controller.dropHover) { controller.dropFiles($0) }
         .padding(.top, s.topOffset)
         .frame(width: IslandController.panelSize.width, height: IslandController.panelSize.height, alignment: .top)
         .environment(\.island, theme)

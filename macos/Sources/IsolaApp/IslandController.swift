@@ -54,6 +54,7 @@ final class IslandController: ObservableObject {
 
     private var monitors: [Any] = []
     private var hovering = false
+    private var swipe = Swipe()
     private var openTimer: Timer?
     private var closeTimer: Timer?
     private var peekTimer: Timer?
@@ -298,10 +299,22 @@ final class IslandController: ObservableObject {
         close()
     }
 
+    /// Il modulo che prende i file lasciati fuori dalla sua scheda (oggi la Mensola).
+    private var dropTarget: (record: ModuleRecord, handler: FileDropHandler)? {
+        for r in manager.tabs { if let h = r.module as? FileDropHandler { return (r, h) } }
+        return nil
+    }
+
     private func dropEntered() {
-        if let shelf = manager.record("shelf"), shelf.running, shelf.card != nil {
-            open(tab: "shelf")
-        }
+        if let t = dropTarget { open(tab: t.record.moduleId) }
+    }
+
+    /// File lasciati sull'isola ma fuori dalla scheda che li accetta (titolo, schede, pillola).
+    func dropFiles(_ providers: [NSItemProvider]) -> Bool {
+        dropHover = false
+        guard let t = dropTarget, t.handler.acceptFiles(providers) else { return false }
+        if mode != .open || selectedTab != t.record.moduleId { open(tab: t.record.moduleId) }
+        return true
     }
 
     // MARK: tastiera
@@ -365,6 +378,11 @@ final class IslandController: ObservableObject {
                 if !self.hitRect.contains(NSEvent.mouseLocation) { self.close() }
             }
         }) { monitors.append(m) }
+        // Due dita in orizzontale sull'isola aperta: scheda precedente o successiva.
+        if let m = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel, handler: { [weak self] e in
+            let used = MainActor.assumeIsolated { self?.handleScroll(e) ?? false }
+            return used ? nil : e
+        }) { monitors.append(m) }
         // Esc: chiude.
         if let m = NSEvent.addLocalMonitorForEvents(matching: .keyDown, handler: { [weak self] e in
             if e.keyCode == 53 {
@@ -373,6 +391,44 @@ final class IslandController: ObservableObject {
             }
             return e
         }) { monitors.append(m) }
+    }
+
+    /// Un gesto alla volta: decide l'asse nei primi punti, cambia scheda una volta sola e si
+    /// tiene anche l'inerzia. Lo scorrimento verticale arriva alle schede come sempre.
+    private struct Swipe {
+        enum Axis { case undecided, horizontal, vertical }
+        var axis = Axis.undecided
+        var dx: CGFloat = 0, dy: CGFloat = 0
+        var fired = false
+    }
+
+    private func handleScroll(_ e: NSEvent) -> Bool {
+        guard e.hasPreciseScrollingDeltas else { return false }   // rotella del mouse: niente
+        if !e.momentumPhase.isEmpty { return swipe.axis == .horizontal }
+        if e.phase.contains(.began) || e.phase.contains(.mayBegin) { swipe = Swipe() }
+        guard mode == .open, hitRect.contains(NSEvent.mouseLocation) else { return false }
+        swipe.dx += e.scrollingDeltaX
+        swipe.dy += e.scrollingDeltaY
+        if swipe.axis == .undecided, abs(swipe.dx) + abs(swipe.dy) > 8 {
+            swipe.axis = abs(swipe.dx) > abs(swipe.dy) * 1.5 ? .horizontal : .vertical
+        }
+        guard swipe.axis == .horizontal else { return false }
+        if !swipe.fired, abs(swipe.dx) > 36 {
+            swipe.fired = true
+            // Con lo scorrimento naturale il delta segue le dita: dita verso sinistra, scheda dopo.
+            let fingers = e.isDirectionInvertedFromDevice ? swipe.dx : -swipe.dx
+            stepTab(fingers < 0 ? 1 : -1)
+        }
+        if e.phase.contains(.ended) || e.phase.contains(.cancelled) { swipe.dx = 0; swipe.dy = 0 }
+        return true
+    }
+
+    private func stepTab(_ delta: Int) {
+        let ids = manager.tabs.map(\.moduleId)
+        guard ids.count > 1, let cur = selectedTab, let i = ids.firstIndex(of: cur) else { return }
+        let j = i + delta
+        guard ids.indices.contains(j) else { return }
+        select(ids[j])
     }
 
     private func pointerMoved() {

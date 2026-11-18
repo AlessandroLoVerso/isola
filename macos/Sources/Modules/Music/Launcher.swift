@@ -26,10 +26,15 @@ final class MusicLauncher {
 
     func cancel() { generation += 1 }
 
-    /// `done(nil)` se suona, altrimenti un messaggio breve per la scheda.
-    func play(_ player: Player, done: @escaping @MainActor (String?) -> Void) {
+    /// `done(nil)` se suona, altrimenti un messaggio breve per la scheda. Con `uri` (solo Spotify)
+    /// parte quella playlist o quei brani: `play track` di AppleScript, non serve Premium.
+    func play(_ player: Player, uri: String? = nil, done: @escaping @MainActor (String?) -> Void) {
         generation += 1
         let gen = generation
+        if let uri, player != Self.spotify || !SpotifyController.isSafeURI(uri) {
+            done("Non riesco a far partire questa playlist.")
+            return
+        }
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: player.id) else {
             done("\(player.name) non è installata.")
             return
@@ -47,16 +52,17 @@ final class MusicLauncher {
                     return
                 }
                 // Spotify appena aperto ci mette un attimo prima di accettare "play".
-                self.tryPlay(player, attempt: 0, delay: wasRunning ? 0 : 1.5, gen: gen, done: done)
+                self.tryPlay(player, uri: uri, attempt: 0, delay: wasRunning ? 0 : 1.5, gen: gen, done: done)
             }
         }
     }
 
-    private func tryPlay(_ player: Player, attempt: Int, delay: Double, gen: Int,
+    private func tryPlay(_ player: Player, uri: String?, attempt: Int, delay: Double, gen: Int,
                          done: @escaping @MainActor (String?) -> Void) {
+        let command = uri.map { "play track \"\($0)\"" } ?? "play"
         let source = """
         tell application id "\(player.id)"
-            play
+            \(command)
             delay 0.6
             return (player state as string)
         end tell
@@ -75,7 +81,7 @@ final class MusicLauncher {
                 if state == "playing" {
                     done(nil)
                 } else if attempt < 4 {
-                    self.tryPlay(player, attempt: attempt + 1, delay: 1.2, gen: gen, done: done)
+                    self.tryPlay(player, uri: uri, attempt: attempt + 1, delay: 1.2, gen: gen, done: done)
                 } else {
                     self.log("musica: play non confermato (errore \(code))")
                     done("\(player.name) è aperta: premi play lì.")

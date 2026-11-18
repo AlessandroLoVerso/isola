@@ -7,7 +7,7 @@ import SwiftUI
 ///
 /// Mentre si trascinano file sopra la notch il core apre questa scheda; il rilascio lo
 /// accetta la scheda stessa (`.onDrop` su tutta l'area).
-public final class ShelfModule: IslandModule, RestingFaceProvider {
+public final class ShelfModule: IslandModule, RestingFaceProvider, FileDropHandler {
     public init() {}
     public var id: String { "shelf" }
     public var title: String { "Mensola" }
@@ -42,6 +42,11 @@ public final class ShelfModule: IslandModule, RestingFaceProvider {
     // MARK: faccia sulla pillola
 
     /// Bassa: sopra solo all'ora. Il vassoio con il numero di file.
+    public func acceptFiles(_ providers: [NSItemProvider]) -> Bool {
+        guard !model.draggingOut else { return false }
+        return model.add(providers: providers)
+    }
+
     public var restingPriority: Int { model.items.isEmpty ? 0 : 10 }
 
     public func makeRestingFace() -> RestingFace {

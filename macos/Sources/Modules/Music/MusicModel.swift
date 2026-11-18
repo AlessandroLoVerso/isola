@@ -44,6 +44,7 @@ final class MusicModel: ObservableObject {
     var onClientIdChange: (String) -> Void = { _ in }
     var onKeyboardFocus: () -> Void = {}
     var onLaunch: (MusicLauncher.Player) -> Void = { _ in }
+    var onPlayShortcut: (SpotifyShortcut) -> Void = { _ in }
 
     // Avvio da Isola
     @Published var launching: String?

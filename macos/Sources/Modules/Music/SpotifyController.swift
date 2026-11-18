@@ -2,6 +2,16 @@ import AppKit
 import SwiftUI
 
 @MainActor
+/// Una cosa da far partire dalla scheda vuota: "Brani che ti piacciono" o una playlist.
+struct SpotifyShortcut: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let detail: String
+    let uri: String
+    let imageURL: URL?
+    let liked: Bool
+}
+
 final class SpotifyModel: ObservableObject {
     enum Link { case disconnected, connecting, connected }
     enum Segment: CaseIterable { case playlist, queue, search
@@ -37,6 +47,9 @@ final class SpotifyModel: ObservableObject {
     @Published var playBlocked = false
     @Published var queueBlocked = false
     @Published var trackTitle = ""
+    /// Scheda vuota: preferiti e playlist da far partire.
+    @Published var shortcuts: [SpotifyShortcut] = []
+    @Published var shortcutsLoading = false
 
     func resetTrack() {
         isLiked = false
@@ -60,6 +73,8 @@ final class SpotifyModel: ObservableObject {
         playBlocked = false
         queueBlocked = false
         trackTitle = ""
+        shortcuts = []
+        shortcutsLoading = false
     }
 }
 
@@ -88,6 +103,7 @@ final class SpotifyController {
     private var allPlaylists: [SpotifyPlaylist]?
     private var playlistsAt = Date.distantPast
     private var playlistsLoading = false
+    private var shortcutsAt = Date.distantPast
     private var queueVersion = 0, searchVersion = 0
     private var lastQuery = ""
     private var login: Task<Void, Never>?
@@ -108,6 +124,7 @@ final class SpotifyController {
                 self.connected = false
                 self.me = nil
                 self.allPlaylists = nil
+                self.clearShortcuts()
                 self.setLink(.disconnected, "Spotify ha revocato l'accesso: collegalo di nuovo.")
                 self.updateActive()
             }
@@ -149,6 +166,7 @@ final class SpotifyController {
         fetchingMe = false
         allPlaylists = nil
         playlistsLoading = false
+        shortcutsAt = .distantPast
         lastQuery = ""
         Task { [api] in await api.forget() }
         model.resetAll()
@@ -297,6 +315,52 @@ final class SpotifyController {
         }
     }
 
+    // MARK: - Scheda vuota
+
+    /// Preferiti e playlist per la scheda vuota. Una chiamata ogni 10 minuti al massimo.
+    func loadShortcuts() {
+        guard connected, !model.shortcutsLoading else { return }
+        if !model.shortcuts.isEmpty, Date().timeIntervalSince(shortcutsAt) < Self.playlistCacheAge { return }
+        model.shortcutsLoading = true
+        let known = me
+        run({ [api] () async -> (SpotifyMe?, [SpotifyPlaylist]?) in
+            var m = known
+            if m == nil { m = await api.me().0 }
+            guard m != nil else { return (nil, nil) }
+            return (m, await api.libraryPlaylists().0)
+        }) { [weak self] r in
+            guard let self else { return }
+            self.model.shortcutsLoading = false
+            if let m = r.0, self.me == nil { self.me = m; self.model.displayName = m.displayName }
+            guard let m = r.0, let list = r.1 else { return }
+            self.shortcutsAt = Date()
+            var out = [SpotifyShortcut(id: "liked", name: "Brani che ti piacciono", detail: "Preferiti",
+                                       uri: Self.likedURI(m.id), imageURL: nil, liked: true)]
+            for p in list where Self.isSafeURI(p.uri) {
+                out.append(SpotifyShortcut(id: p.id, name: p.name.isEmpty ? "Playlist" : p.name,
+                                           detail: p.count == 1 ? "1 brano" : "\(p.count) brani",
+                                           uri: p.uri, imageURL: p.imageURL, liked: false))
+            }
+            self.model.shortcuts = out
+        }
+    }
+
+    private func clearShortcuts() {
+        shortcutsAt = .distantPast
+        model.shortcuts = []
+    }
+
+    /// Finisce dentro un AppleScript: solo caratteri di un URI Spotify.
+    nonisolated static func isSafeURI(_ s: String) -> Bool {
+        s.hasPrefix("spotify:") && s.count < 200
+            && s.unicodeScalars.allSatisfy { $0.isASCII && CharacterSet.alphanumerics.contains($0) || ":._-".unicodeScalars.contains($0) }
+    }
+
+    nonisolated static func likedURI(_ userId: String) -> String {
+        let u = "spotify:user:\(userId):collection"
+        return isSafeURI(u) ? u : "spotify:collection:tracks"
+    }
+
     func applyFilter() {
         guard let all = allPlaylists else { return }
         let f = model.playlistFilter.trimmingCharacters(in: .whitespaces)
@@ -423,6 +487,7 @@ final class SpotifyController {
                 self.me = me
                 self.model.displayName = me?.displayName
                 self.allPlaylists = nil
+                self.clearShortcuts()
                 self.model.playBlocked = false
                 self.model.queueBlocked = false
                 self.log("Spotify: collegato")
@@ -450,6 +515,7 @@ final class SpotifyController {
         connected = false
         me = nil
         allPlaylists = nil
+        clearShortcuts()
         track = nil
         model.displayName = nil
         model.playBlocked = false

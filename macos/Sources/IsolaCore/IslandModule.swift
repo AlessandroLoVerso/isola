@@ -78,6 +78,15 @@ public protocol StripProvider: IslandModule {
     func makeStrip() -> RestingFace
 }
 
+/// Facoltativo: riceve i file lasciati in qualsiasi punto dell'isola (titolo, schede, pillola),
+/// non solo sulla propria scheda. Quando un file entra nell'isola si apre la sua scheda.
+/// Vince il primo modulo acceso in ordine di scheda.
+@MainActor
+public protocol FileDropHandler: IslandModule {
+    /// `false` se in questo momento non li vuoi (per esempio se il trascinamento parte da te).
+    func acceptFiles(_ providers: [NSItemProvider]) -> Bool
+}
+
 // MARK: - Quello che il modulo riceve
 
 /// Ogni modulo riceve la sua istanza. Si chiama dal main thread.
