@@ -46,6 +46,7 @@ public partial class App : System.Windows.Application
         Log.Info($"Avvio di Isola {typeof(App).Assembly.GetName().Version}");
 
         _settings = GlobalSettingsStore.Load();
+        Isola.Settings.StartupRegistration.RepairInBackground();
         _modules = new ModuleManager(_settings, Dispatcher);
         _modules.Discover();
 
