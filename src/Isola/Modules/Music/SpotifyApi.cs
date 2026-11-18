@@ -17,6 +17,10 @@ internal sealed record SpotifyTrack(string? Id, string Uri, string Name, string 
 internal sealed record SpotifyQueueEntry(string Name, string Artist);
 internal sealed record SpotifyPlaylist(string Id, string Name, int Count, string OwnerId, bool Collaborative);
 internal sealed record SpotifyMe(string Id, string DisplayName);
+internal sealed record SpotifyDevice(string Id, string Name, string Type, bool IsActive, bool IsRestricted);
+/// <summary>A "Recenti" chip: a context (playlist, album, artist, liked songs) or a lone track.
+/// <see cref="PlaylistId"/> is set when the label still needs the playlist's name.</summary>
+internal sealed record SpotifyRecent(string Label, string? ContextUri, string TrackUri, string? PlaylistId);
 
 /// <summary>Spotify Web API client. Thread-safe, never called on the UI thread. Keeps the access
 /// token in memory, refreshes it once on 401, honours Retry-After on 429, maps 403
@@ -332,6 +336,47 @@ internal sealed class SpotifyApi
         return r.Error;
     }
 
+    public async Task<(List<SpotifyDevice>? List, SpotifyError Error)> GetDevicesAsync()
+    {
+        var r = await SendAsync(HttpMethod.Get, "/me/player/devices").ConfigureAwait(false);
+        return r.Ok ? (ParseDevices(r.Body), SpotifyError.None) : (null, r.Error);
+    }
+
+    /// <summary>PUT /me/player/play?device_id= with no body: resumes the last context there.</summary>
+    public async Task<SpotifyError> ResumeOnDeviceAsync(string deviceId)
+    {
+        var r = await SendAsync(HttpMethod.Put, "/me/player/play?device_id=" + Uri.EscapeDataString(deviceId)).ConfigureAwait(false);
+        return r.Error;
+    }
+
+    /// <summary>Plays a "Recenti" chip on a device: its context, or the lone track.</summary>
+    public async Task<SpotifyError> PlayRecentOnDeviceAsync(string deviceId, SpotifyRecent item)
+    {
+        string body = item.ContextUri != null
+            ? JsonSerializer.Serialize(new { context_uri = item.ContextUri })
+            : JsonSerializer.Serialize(new { uris = new[] { item.TrackUri } });
+        var r = await SendAsync(HttpMethod.Put, "/me/player/play?device_id=" + Uri.EscapeDataString(deviceId), body).ConfigureAwait(false);
+        return r.Error;
+    }
+
+    public async Task<(List<SpotifyRecent>? List, SpotifyError Error)> GetRecentlyPlayedAsync(int max)
+    {
+        var r = await SendAsync(HttpMethod.Get, "/me/player/recently-played?limit=10").ConfigureAwait(false);
+        return r.Ok ? (ParseRecentlyPlayed(r.Body, max), SpotifyError.None) : (null, r.Error);
+    }
+
+    public async Task<string?> GetPlaylistNameAsync(string playlistId)
+    {
+        var r = await SendAsync(HttpMethod.Get, $"/playlists/{Uri.EscapeDataString(playlistId)}?fields=name").ConfigureAwait(false);
+        if (!r.Ok) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(r.Body);
+            return Str(doc.RootElement, "name") is { Length: > 0 } n ? n : null;
+        }
+        catch { return null; }
+    }
+
     /// <summary>Album art from Spotify's CDN, for the tiny covers in the search results.</summary>
     public static async Task<byte[]?> DownloadImageAsync(string url)
     {
@@ -472,6 +517,98 @@ internal sealed class SpotifyApi
                    && Str(e, "reason") == "PREMIUM_REQUIRED";
         }
         catch { return false; }
+    }
+
+    internal static List<SpotifyDevice> ParseDevices(string json)
+    {
+        var list = new List<SpotifyDevice>();
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("devices", out var ds) || ds.ValueKind != JsonValueKind.Array) return list;
+            foreach (var d in ds.EnumerateArray())
+            {
+                string? id = Str(d, "id");
+                if (string.IsNullOrEmpty(id)) continue;
+                bool active = d.TryGetProperty("is_active", out var a) && a.ValueKind == JsonValueKind.True;
+                bool restricted = d.TryGetProperty("is_restricted", out var x) && x.ValueKind == JsonValueKind.True;
+                list.Add(new SpotifyDevice(id, Str(d, "name") ?? "", Str(d, "type") ?? "", active, restricted));
+            }
+        }
+        catch { }
+        return list;
+    }
+
+    /// <summary>This PC's Spotify: the Computer named like the machine, else the active Computer,
+    /// else the first Computer. Phones, speakers and restricted devices are never picked.</summary>
+    internal static SpotifyDevice? PickDevice(IReadOnlyList<SpotifyDevice> devices, string machineName)
+    {
+        var pcs = devices.Where(d => !d.IsRestricted && string.Equals(d.Type, "Computer", StringComparison.OrdinalIgnoreCase)).ToList();
+        return pcs.FirstOrDefault(d => string.Equals(d.Name.Trim(), machineName, StringComparison.OrdinalIgnoreCase))
+               ?? pcs.FirstOrDefault(d => d.IsActive)
+               ?? pcs.FirstOrDefault();
+    }
+
+    /// <summary>GET /me/player/recently-played → up to <paramref name="max"/> chips, newest first,
+    /// one per context (playlist / album / artist / liked songs) or per track without context.</summary>
+    internal static List<SpotifyRecent> ParseRecentlyPlayed(string json, int max)
+    {
+        var list = new List<SpotifyRecent>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) return list;
+            foreach (var it in items.EnumerateArray())
+            {
+                if (list.Count >= max) break;
+                if (!it.TryGetProperty("track", out var track) || track.ValueKind != JsonValueKind.Object) continue;
+                string? trackUri = Str(track, "uri");
+                string trackName = Str(track, "name") ?? "";
+                if (string.IsNullOrEmpty(trackUri) || trackUri.StartsWith("spotify:local:", StringComparison.Ordinal)) continue;
+
+                string? ctxUri = null, ctxType = null;
+                if (it.TryGetProperty("context", out var ctx) && ctx.ValueKind == JsonValueKind.Object)
+                {
+                    ctxUri = Str(ctx, "uri");
+                    ctxType = Str(ctx, "type");
+                    if (string.IsNullOrEmpty(ctxUri)) ctxUri = null;
+                }
+                if (!seen.Add(ctxUri ?? trackUri)) continue;
+
+                string label = trackName;
+                string? playlistId = null;
+                if (ctxUri != null)
+                {
+                    if (ctxUri.EndsWith(":collection", StringComparison.Ordinal) || ctxType == "collection")
+                        label = "Brani che ti piacciono";
+                    else if (ctxType == "album" && track.TryGetProperty("album", out var album) && Str(album, "name") is { Length: > 0 } an)
+                        label = an;
+                    else if (ctxType == "artist")
+                        label = ArtistName(track, ctxUri) ?? trackName;
+                    else if (ctxType == "playlist" && ctxUri.StartsWith("spotify:playlist:", StringComparison.Ordinal))
+                        playlistId = ctxUri["spotify:playlist:".Length..];
+                }
+                if (label.Length == 0) continue;
+                list.Add(new SpotifyRecent(label, ctxUri, trackUri, playlistId));
+            }
+        }
+        catch { }
+        return list;
+    }
+
+    private static string? ArtistName(JsonElement track, string artistUri)
+    {
+        if (!track.TryGetProperty("artists", out var a) || a.ValueKind != JsonValueKind.Array) return null;
+        string? first = null;
+        foreach (var x in a.EnumerateArray())
+        {
+            string? n = Str(x, "name");
+            if (string.IsNullOrEmpty(n)) continue;
+            if (Str(x, "uri") == artistUri) return n;
+            first ??= n;
+        }
+        return first;
     }
 
     private static SpotifyTrack? ParseTrack(JsonElement it)

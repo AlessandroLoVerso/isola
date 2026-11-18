@@ -25,6 +25,7 @@ public sealed class MusicModule : IIslandModule, IRestingFaceProvider
     private MusicCard? _card;
     private LyricsService? _lyrics;
     private SpotifyController? _spotify;
+    private SpotifyLauncher? _launcher;
     private int _generation;
     private int _priority;
     private int _propsVersion;
@@ -66,6 +67,7 @@ public sealed class MusicModule : IIslandModule, IRestingFaceProvider
         _pauseTimer.Tick += (_, _) => { _pauseTimer?.Stop(); UpdatePriority(); };
         _vm.Reset();
         _spotify = new SpotifyController(host, Id, _vm.Spotify, SaveClientId);
+        _launcher = new SpotifyLauncher(host, Id, _vm, _spotify, () => _manager?.GetSessions(), () => _settings.SpotifyAutoPlay);
         _ = InitAsync(gen);
     }
 
@@ -86,6 +88,8 @@ public sealed class MusicModule : IIslandModule, IRestingFaceProvider
         _pausedSince = null;
         _lyricsCts?.Cancel();
         _lyricsCts = null;
+        _launcher?.Stop();
+        _launcher = null;
         _spotify?.Stop();
         _spotify = null;
         DetachSession();
@@ -182,10 +186,13 @@ public sealed class MusicModule : IIslandModule, IRestingFaceProvider
             ClearLyrics();
             UpdatePriority();
             UpdateTimerState();
+            _launcher?.OnSessionsChanged();
+            if (_card is { IsVisible: true }) RefreshEmptyState();
             return;
         }
 
         _vm.HasSession = true;
+        _launcher?.OnSessionsChanged();
         UpdatePlayback();
         UpdateTimeline();
         _ = LoadPropertiesAsync();
@@ -230,6 +237,7 @@ public sealed class MusicModule : IIslandModule, IRestingFaceProvider
         UpdatePriority();
         UpdateTimerState();
         UpdatePosition();
+        _launcher?.OnSessionsChanged();
     }
 
     private void UpdateTimeline()
@@ -407,6 +415,29 @@ public sealed class MusicModule : IIslandModule, IRestingFaceProvider
     internal void SpotifyEnqueue(SearchRow row) => _spotify?.Enqueue(row);
     internal void RequestKeyboardFocus() => _host?.RequestKeyboardFocus();
 
+    // ---------- "Apri Spotify" (empty card, UI thread) ----------
+
+    internal void OpenSpotify() => _launcher?.Launch(null);
+    internal void PlayRecent(RecentRow row) => _launcher?.Launch(row.Item);
+
+    /// <summary>The empty card became visible (or the last session went away while it was):
+    /// is Spotify installed / running, plus the "Recenti" chips. Nothing runs while it's hidden.</summary>
+    private void RefreshEmptyState()
+    {
+        if (_vm.HasSession || _host == null) return;
+        _ = Task.Run(() => (Installed: SpotifyLauncher.IsInstalled(), Running: SpotifyLauncher.IsRunning())).ContinueWith(t =>
+        {
+            if (t.IsFaulted) return;
+            var r = t.Result;
+            Post(() =>
+            {
+                _vm.SpotifyInstalled = r.Installed;
+                if (_launcher is { IsBusy: false }) _vm.SpotifyRunning = r.Running;
+            });
+        }, TaskScheduler.Default);
+        _spotify?.EnsureRecents();
+    }
+
     // ---------- priority ----------
 
     private void UpdatePriority()
@@ -490,7 +521,13 @@ public sealed class MusicModule : IIslandModule, IRestingFaceProvider
     public FrameworkElement? CreateCard()
     {
         var card = new MusicCard(this, _vm);
-        card.IsVisibleChanged += (_, _) => { UpdatePosition(); UpdateTimerState(); };
+        card.IsVisibleChanged += (_, _) =>
+        {
+            UpdatePosition();
+            UpdateTimerState();
+            if (card.IsVisible) RefreshEmptyState();
+            else if (_launcher is { IsBusy: false }) _vm.LaunchHint = "";
+        };
         _card = card;
         return card;
     }
@@ -561,8 +598,30 @@ public sealed class MusicModule : IIslandModule, IRestingFaceProvider
         var card = new Border { Child = new StackPanel { Margin = new Thickness(0, 14, 0, 14), Children = { toggle, note } } };
         card.SetResourceReference(FrameworkElement.StyleProperty, "Isola.Style.SettingCard");
 
+        var autoPlay = new CheckBox { IsChecked = _settings.SpotifyAutoPlay, Content = "Quando apro Spotify dall'isola, fai partire la musica" };
+        autoPlay.SetResourceReference(FrameworkElement.StyleProperty, "Isola.Style.ToggleSwitch");
+        void AutoPlayChanged(object s, RoutedEventArgs e)
+        {
+            _settings.SpotifyAutoPlay = autoPlay.IsChecked == true;
+            _host?.SaveSettings(Id, _settings);
+        }
+        autoPlay.Checked += AutoPlayChanged;
+        autoPlay.Unchecked += AutoPlayChanged;
+        var autoNote = new TextBlock
+        {
+            Text = "Se non suona niente e Spotify è sul PC, la scheda mostra «Apri Spotify». Con questa opzione Isola preme anche play " +
+                   "(riprende l'ultima cosa ascoltata); se non basta e Spotify è collegato qui sotto, lo chiede una volta a Spotify (serve Premium).",
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            Margin = new Thickness(0, 6, 0, 0),
+        };
+        autoNote.SetResourceReference(TextBlock.ForegroundProperty, "Settings.Brush.Muted");
+        var autoCard = new Border { Margin = new Thickness(0, 8, 0, 0), Child = new StackPanel { Margin = new Thickness(0, 14, 0, 14), Children = { autoPlay, autoNote } } };
+        autoCard.SetResourceReference(FrameworkElement.StyleProperty, "Isola.Style.SettingCard");
+
         var page = new StackPanel();
         page.Children.Add(card);
+        page.Children.Add(autoCard);
         page.Children.Add(new SpotifySettingsSection(_spotify, _settings.SpotifyClientId, SaveClientId));
         return page;
     }
@@ -597,4 +656,6 @@ public sealed class MusicSettings
     public bool LyricsEnabled { get; set; }
     /// <summary>Client ID of the user's own Spotify developer app (PKCE, no secret). Empty = not set.</summary>
     public string SpotifyClientId { get; set; } = "";
+    /// <summary>"Apri Spotify" also starts the music (one GSMTC play, then one Web API resume).</summary>
+    public bool SpotifyAutoPlay { get; set; } = true;
 }

@@ -86,6 +86,66 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- "Apri Spotify": pill in Spotify green, black text (Spotify's own button look) -->
+        <Style x:Key="Music.SpotifyButton" TargetType="Button">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="18,0,20,0" />
+            <Setter Property="Foreground" Value="#FF000000" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="17" Background="#FF1DB954" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#FF1ED760" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#FF169C46" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.7" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- "Recenti" chip -->
+        <Style x:Key="Music.RecentChip" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource Isola.Brush.Muted}" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Margin" Value="3,0" />
+            <Setter Property="MaxWidth" Value="104" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{DynamicResource Isola.Brush.Surface}" CornerRadius="11" Padding="10,0" Height="22">
+                            <TextBlock Text="{TemplateBinding Content}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Isola.Brush.SurfaceHover}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Isola.Brush.Foreground}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -200,15 +260,52 @@
         <!-- Nothing playing -->
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                     Visibility="{Binding NoSession, Converter={StaticResource Vis}}">
-            <Border Width="56" Height="56" CornerRadius="14" Background="{DynamicResource Isola.Brush.Surface}" HorizontalAlignment="Center">
-                <TextBlock Text="&#xE8D6;" FontFamily="{DynamicResource Isola.Font.Icons}" FontSize="24"
+            <Border CornerRadius="14" Background="{DynamicResource Isola.Brush.Surface}" HorizontalAlignment="Center">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Width" Value="56" />
+                        <Setter Property="Height" Value="56" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ShowSpotifyButton}" Value="True">
+                                <Setter Property="Width" Value="44" />
+                                <Setter Property="Height" Value="44" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="&#xE8D6;" FontFamily="{DynamicResource Isola.Font.Icons}" FontSize="22"
                            Foreground="{DynamicResource Isola.Brush.Muted}"
                            HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
-            <TextBlock Text="Niente in riproduzione" FontSize="15" FontWeight="SemiBold" Margin="0,12,0,0"
+            <TextBlock Text="Niente in riproduzione" FontSize="15" FontWeight="SemiBold" Margin="0,10,0,0"
                        FontFamily="{DynamicResource Isola.Font.Display}" HorizontalAlignment="Center" />
-            <TextBlock Text="Avvia musica o un video in un'app qualsiasi." FontSize="12" Margin="0,3,0,0"
-                       Foreground="{DynamicResource Isola.Brush.Muted}" HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding EmptySubtitle}" FontSize="12" Margin="0,3,0,0" MaxWidth="400" TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource Isola.Brush.Muted}" HorizontalAlignment="Center"
+                       Visibility="{Binding ShowEmptySubtitle, Converter={StaticResource Vis}}" />
+
+            <!-- Spotify is on this PC: open it (and start the music) from here -->
+            <StackPanel Visibility="{Binding ShowSpotifyButton, Converter={StaticResource Vis}}" Margin="0,12,0,0">
+                <Button x:Name="SpotifyButton" Style="{StaticResource Music.SpotifyButton}" IsEnabled="{Binding CanLaunchSpotify}"
+                        HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xF5B0;" FontFamily="{DynamicResource Isola.Font.Icons}" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding SpotifyButtonText}" FontSize="13" FontWeight="SemiBold" Margin="8,0,0,1" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <ItemsControl x:Name="RecentsList" ItemsSource="{Binding Spotify.Recents}" Margin="0,10,0,0" HorizontalAlignment="Center"
+                              Focusable="False" Visibility="{Binding Spotify.ShowRecents, Converter={StaticResource Vis}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Style="{StaticResource Music.RecentChip}" Content="{Binding Label}" ToolTip="{Binding Label}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
         </StackPanel>
     </Grid>
 </UserControl>

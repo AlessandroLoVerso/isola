@@ -13,7 +13,7 @@ internal static class SpotifyPkce
     public const string RedirectUri = "http://127.0.0.1:47322/callback";
     public const string ListenerPrefix = "http://127.0.0.1:47322/callback/";
     public const string Scopes =
-        "user-read-playback-state user-modify-playback-state user-read-currently-playing " +
+        "user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-recently-played " +
         "user-library-read user-library-modify playlist-read-private playlist-read-collaborative " +
         "playlist-modify-private playlist-modify-public";
 

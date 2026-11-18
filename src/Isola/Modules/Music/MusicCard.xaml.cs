@@ -25,6 +25,11 @@ internal partial class MusicCard : UserControl
         PlayButton.Click += (_, _) => _module.PlayPause();
         HeartButton.Click += (_, _) => _module.SpotifyToggleLike();
         MoreButton.Click += (_, _) => _module.SpotifyOpenPanel();
+        SpotifyButton.Click += (_, _) => _module.OpenSpotify();
+        RecentsList.AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, new RoutedEventHandler((_, e) =>
+        {
+            if (e.OriginalSource is FrameworkElement { DataContext: RecentRow row }) _module.PlayRecent(row);
+        }));
         vm.Spotify.PropertyChanged += OnSpotifyChanged;
         // A closed card reopens on the player, not on the panel.
         IsVisibleChanged += (_, _) => { if (!IsVisible && vm.Spotify.IsPanelOpen) _module.SpotifyClosePanel(); };

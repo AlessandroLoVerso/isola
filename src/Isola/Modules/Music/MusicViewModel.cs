@@ -32,8 +32,42 @@ internal sealed class MusicViewModel : INotifyPropertyChanged
     /// <summary>Spotify extras (heart, panel); inactive unless Spotify plays and is connected.</summary>
     public SpotifyViewModel Spotify { get; } = new();
 
-    public bool HasSession { get => _hasSession; set { if (Set(ref _hasSession, value)) Raise(nameof(NoSession)); } }
+    public bool HasSession { get => _hasSession; set { if (Set(ref _hasSession, value)) { Raise(nameof(NoSession)); Raise(nameof(ShowSpotifyButton)); } } }
     public bool NoSession => !_hasSession;
+
+    // ---------- "Apri Spotify" (empty card) ----------
+
+    public const string DefaultEmptyHint = "Avvia musica o un video in un'app qualsiasi.";
+    private bool _spotifyInstalled, _spotifyRunning, _launchBusy;
+    private string _launchHint = "";
+
+    public bool SpotifyInstalled
+    {
+        get => _spotifyInstalled;
+        set { if (Set(ref _spotifyInstalled, value)) { Raise(nameof(ShowSpotifyButton)); Raise(nameof(ShowEmptySubtitle)); } }
+    }
+    public bool SpotifyRunning { get => _spotifyRunning; set { if (Set(ref _spotifyRunning, value)) Raise(nameof(SpotifyButtonText)); } }
+    /// <summary>A launch / resume attempt is in progress: the button shows the progress label.</summary>
+    public bool LaunchBusy
+    {
+        get => _launchBusy;
+        set { if (Set(ref _launchBusy, value)) { Raise(nameof(SpotifyButtonText)); Raise(nameof(CanLaunchSpotify)); } }
+    }
+    /// <summary>Short result of the last attempt ("Spotify è aperto: premi play lì"). Empty = none.</summary>
+    public string LaunchHint
+    {
+        get => _launchHint;
+        set { if (Set(ref _launchHint, value)) { Raise(nameof(EmptySubtitle)); Raise(nameof(ShowEmptySubtitle)); } }
+    }
+    public bool ShowSpotifyButton => !_hasSession && _spotifyInstalled;
+    public bool CanLaunchSpotify => !_launchBusy;
+    public string SpotifyButtonText => _launchBusy
+        ? (_spotifyRunning ? "Riprendo su Spotify…" : "Avvio di Spotify…")
+        : (_spotifyRunning ? "Riprendi su Spotify" : "Apri Spotify");
+    /// <summary>With the Spotify button the generic line goes away (space for the chips) unless
+    /// there's a hint to show.</summary>
+    public bool ShowEmptySubtitle => !_spotifyInstalled || _launchHint.Length > 0;
+    public string EmptySubtitle => _launchHint.Length > 0 ? _launchHint : DefaultEmptyHint;
 
     public bool IsPlaying
     {

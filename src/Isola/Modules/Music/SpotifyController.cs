@@ -56,6 +56,7 @@ internal sealed class SpotifyController
         {
             _connected = false;
             _me = null;
+            ResetRecents();
             SetLink(SpotifyLinkState.Disconnected, "Spotify ha revocato l'accesso: collegalo di nuovo.");
             UpdateActive();
         });
@@ -375,6 +376,91 @@ internal sealed class SpotifyController
         });
     }
 
+    // ---------- "Apri Spotify" / "Recenti" (empty card) ----------
+
+    private static readonly TimeSpan RecentsCacheAge = TimeSpan.FromMinutes(5);
+    private const int MaxRecents = 4;
+    private DateTime _recentsAt;
+    private bool _recentsLoading, _recentsDenied;
+    private int _recentsVersion;
+
+    public bool IsConnected => _connected;
+
+    /// <summary>Fetches the "Recenti" chips when the empty card becomes visible. Cached 5 minutes;
+    /// a missing scope (account linked before this feature) stops it until the next link.</summary>
+    public void EnsureRecents()
+    {
+        if (!_connected || _vm.PlayBlocked || _recentsDenied || _recentsLoading) return;
+        if (_recentsAt != default && DateTime.UtcNow - _recentsAt < RecentsCacheAge) return;
+        _recentsLoading = true;
+        int v = ++_recentsVersion;
+        var known = _playlists?.ToDictionary(p => p.Id, p => p.Name, StringComparer.Ordinal);
+        Run(async () =>
+        {
+            var (list, err) = await _api.GetRecentlyPlayedAsync(MaxRecents).ConfigureAwait(false);
+            if (list == null) return (List: (List<SpotifyRecent>?)null, Error: err);
+            // Playlist names aren't in the history: from the cache, else one small GET each (≤ 4).
+            var named = await Task.WhenAll(list.Select(async r =>
+            {
+                if (r.PlaylistId == null) return r;
+                string? name = known != null && known.TryGetValue(r.PlaylistId, out var n) ? n
+                    : await _api.GetPlaylistNameAsync(r.PlaylistId).ConfigureAwait(false);
+                return name is { Length: > 0 } ? r with { Label = name } : r;
+            })).ConfigureAwait(false);
+            return (List: (List<SpotifyRecent>?)named.ToList(), Error: SpotifyError.None);
+        }, r =>
+        {
+            _recentsLoading = false;
+            if (v != _recentsVersion) return;
+            _recentsAt = DateTime.UtcNow; // also after an error: no retry before the cache expires
+            if (r.List == null)
+            {
+                if (r.Error == SpotifyError.Forbidden) _recentsDenied = true;
+                return;
+            }
+            _vm.Recents.Clear();
+            foreach (var item in r.List) _vm.Recents.Add(new RecentRow(item));
+            _vm.HasRecents = _vm.Recents.Count > 0;
+        }, () => _recentsLoading = false);
+    }
+
+    private void ResetRecents()
+    {
+        _recentsVersion++;
+        _recentsAt = default;
+        _recentsLoading = _recentsDenied = false;
+        _vm.Recents.Clear();
+        _vm.HasRecents = false;
+    }
+
+    /// <summary>Web API fallback: finds this PC's Spotify device and resumes there (no body), or
+    /// plays a "Recenti" chip. One retry after 2 s if the device hasn't registered yet; then done.</summary>
+    public void PlayOnThisPc(SpotifyRecent? item, Action<SpotifyError> done)
+    {
+        string machine = Environment.MachineName;
+        Run(async () =>
+        {
+            for (int attempt = 0; attempt < 2; attempt++)
+            {
+                if (attempt > 0) await Task.Delay(2000).ConfigureAwait(false);
+                if (!_alive) return SpotifyError.Failed;
+                var (devices, err) = await _api.GetDevicesAsync().ConfigureAwait(false);
+                if (devices == null) return err;
+                var d = SpotifyApi.PickDevice(devices, machine);
+                if (d == null) continue;
+                return item == null
+                    ? await _api.ResumeOnDeviceAsync(d.Id).ConfigureAwait(false)
+                    : await _api.PlayRecentOnDeviceAsync(d.Id, item).ConfigureAwait(false);
+            }
+            return SpotifyError.NotFound;
+        }, done, () => done(SpotifyError.Failed));
+    }
+
+    /// <summary>403 PREMIUM_REQUIRED seen by the launcher: hide the chips, disable panel play.</summary>
+    public void MarkPlayBlocked() => _vm.PlayBlocked = true;
+
+    internal void ShowHint(string text) => ShowMessage(text);
+
     // ---------- connection (settings page) ----------
 
     public void Connect(string clientId)
@@ -407,6 +493,7 @@ internal sealed class SpotifyController
                 _me = r.Me;
                 _playlists = null;
                 _vm.PlayBlocked = _vm.QueueBlocked = false;
+                ResetRecents();
                 _host.Log(_moduleId, "Spotify: collegato");
                 SetLink(SpotifyLinkState.Connected, "");
                 UpdateActive();
@@ -438,6 +525,7 @@ internal sealed class SpotifyController
         _playlists = null;
         _track = null;
         _vm.PlayBlocked = _vm.QueueBlocked = false;
+        ResetRecents();
         Run(() => { _api.Disconnect(); return Task.FromResult(true); }, _ => { });
         _host.Log(_moduleId, "Spotify: scollegato");
         SetLink(SpotifyLinkState.Disconnected, "");

@@ -61,13 +61,19 @@ internal sealed class SpotifyViewModel : Observable
     public bool PlayBlocked
     {
         get => _playBlocked;
-        set { if (Set(ref _playBlocked, value)) { Raise(nameof(CanPlay)); Raise(nameof(PlayTip)); } }
+        set { if (Set(ref _playBlocked, value)) { Raise(nameof(CanPlay)); Raise(nameof(PlayTip)); Raise(nameof(ShowRecents)); } }
     }
     public bool QueueBlocked
     {
         get => _queueBlocked;
         set { if (Set(ref _queueBlocked, value)) { Raise(nameof(CanEnqueue)); Raise(nameof(EnqueueTip)); } }
     }
+    /// <summary>"Recenti" chips of the empty card (connected account, Premium not ruled out).</summary>
+    public ObservableCollection<RecentRow> Recents { get; } = new();
+    private bool _hasRecents;
+    public bool HasRecents { get => _hasRecents; set { if (Set(ref _hasRecents, value)) Raise(nameof(ShowRecents)); } }
+    public bool ShowRecents => _hasRecents && !_playBlocked;
+
     public bool CanPlay => !_playBlocked;
     public bool CanEnqueue => !_queueBlocked;
     public string PlayTip => _playBlocked ? PremiumTip : "Riproduci";
@@ -89,6 +95,8 @@ internal sealed class SpotifyViewModel : Observable
         Playlists.Clear();
         Queue.Clear();
         Results.Clear();
+        Recents.Clear();
+        HasRecents = false;
         PlaylistStatus = QueueStatus = SearchStatus = "";
         PlayBlocked = QueueBlocked = false;
     }
@@ -104,6 +112,13 @@ internal sealed class PlaylistRow
     public SpotifyPlaylist Playlist { get; }
     public string Name => Playlist.Name.Length > 0 ? Playlist.Name : "Senza nome";
     public string CountText { get; }
+}
+
+internal sealed class RecentRow
+{
+    public RecentRow(SpotifyRecent item) => Item = item;
+    public SpotifyRecent Item { get; }
+    public string Label => Item.Label;
 }
 
 internal sealed class QueueRow
