@@ -14,8 +14,9 @@ namespace Isola.Modules.Clipboard;
 
 /// <summary>"Appunti": clipboard history. Listens with AddClipboardFormatListener on the island
 /// window (event-driven, nothing runs between copies), keeps the last 200 items plus the pinned
-/// ones, skips what password managers mark as private, and puts items back with a click.</summary>
-public sealed class ClipboardModule : IIslandModule
+/// ones, skips what password managers mark as private, and puts items back with a click.
+/// Optionally shares new text/images with another computer over Tailscale (ClipSync*.cs).</summary>
+public sealed class ClipboardModule : IIslandModule, IRestingFaceProvider
 {
     /// <summary>Longer texts are not kept (never truncated: a restored item must be what was copied).
     /// Bounds history.json (200 items) and the work done on every change.</summary>
@@ -33,6 +34,8 @@ public sealed class ClipboardModule : IIslandModule
     private uint _lastSeq;
     private uint _ownSeq;
     private int _generation; // bumps on Stop, so late async captures are dropped
+    private ClipSync? _sync;
+    private string _peekFrom = "";
 
     private uint _fmtExclude, _fmtHistory, _fmtViewerIgnore, _fmtPng;
 
@@ -45,6 +48,10 @@ public sealed class ClipboardModule : IIslandModule
     internal IReadOnlyList<ClipItem> Items => _items;
     internal ClipboardStore? Store => _store;
     internal bool Paused => _settings.Paused;
+    internal ClipSync? Sync => _sync;
+
+    /// <summary>Never wins the pill: the face is only used for the short "arrived from" peek.</summary>
+    public int RestingPriority => 0;
 
     public void Start(IIslandHost host)
     {
@@ -65,11 +72,16 @@ public sealed class ClipboardModule : IIslandModule
         host.AddMessageHook(OnMessage);
         _listening = host.Hwnd != IntPtr.Zero && AddClipboardFormatListener(host.Hwnd);
         if (!_listening) host.Log(Id, "AddClipboardFormatListener non riuscito: " + Marshal.GetLastWin32Error());
+
+        _sync = new ClipSync(host, Id, _settings, () => _host?.SaveSettings(Id, _settings), clip => _ = ReceiveAsync(clip));
+        _sync.Apply();
     }
 
     public void Stop()
     {
         _generation++;
+        _sync?.Dispose();
+        _sync = null;
         if (_listening && _host != null) RemoveClipboardFormatListener(_host.Hwnd);
         _listening = false;
         _captureQueued = false;
@@ -145,12 +157,15 @@ public sealed class ClipboardModule : IIslandModule
                 case ClipKind.Text:
                     var text = raw.Text ?? "";
                     if (string.IsNullOrWhiteSpace(text)) return;
+                    _sync?.OnLocalText(text);
+                    if (text.Length > MaxTextChars) { _host?.Log(Id, "testo troppo lungo, non salvato"); return; }
                     var kind = IsUrl(text.Trim()) ? ClipKind.Link : ClipKind.Text;
                     if (kind == ClipKind.Link) text = text.Trim();
                     Add(new ClipItem { Kind = kind, Text = text, Hash = Sha(text) });
                     break;
                 case ClipKind.Image:
-                    await CaptureImageAsync(raw, gen);
+                    var png = await StoreImageAsync(raw.Png, raw.Dib, gen, from: null);
+                    if (png != null) _sync?.OnLocalImage(png);
                     break;
             }
         }
@@ -189,8 +204,10 @@ public sealed class ClipboardModule : IIslandModule
             }
             if (IsClipboardFormatAvailable(CF_UNICODETEXT))
             {
-                var text = ReadUnicodeText(GetClipboardData(CF_UNICODETEXT), MaxTextChars + 1);
-                if (text != null && text.Length > MaxTextChars)
+                // Longer texts are not kept in the history, but may still be shared (up to 1 000 000).
+                int limit = Math.Max(MaxTextChars, _sync?.Enabled == true ? ClipSyncProtocol.MaxTextChars : 0);
+                var text = ReadUnicodeText(GetClipboardData(CF_UNICODETEXT), limit + 1);
+                if (text != null && text.Length > limit)
                 {
                     _host?.Log(Id, "testo troppo lungo, non salvato");
                     return ReadResult.Skip;
@@ -212,7 +229,9 @@ public sealed class ClipboardModule : IIslandModule
         finally { CloseClipboard(); }
     }
 
-    private async Task CaptureImageAsync(RawClip raw, int gen)
+    /// <summary>Saves the image (PNG as is, DIB re-encoded) and its thumbnail, adds it to the
+    /// history. Returns the stored PNG bytes, or null if the module stopped meanwhile.</summary>
+    private async Task<byte[]?> StoreImageAsync(byte[]? rawPng, byte[]? rawDib, int gen, string? from)
     {
         var store = _store!;
         var id = Guid.NewGuid().ToString("N");
@@ -220,24 +239,24 @@ public sealed class ClipboardModule : IIslandModule
         {
             BitmapSource frame;
             byte[] png;
-            if (raw.Png != null)
+            if (rawPng != null)
             {
-                frame = BitmapDecoder.Create(new MemoryStream(raw.Png), BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
-                png = raw.Png;
+                frame = BitmapDecoder.Create(new MemoryStream(rawPng), BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
+                png = rawPng;
             }
             else
             {
-                frame = DecodeDib(raw.Dib!);
+                frame = DecodeDib(rawDib!);
                 png = EncodePng(frame);
             }
-            var hash = Sha(raw.Png ?? raw.Dib!);
+            var hash = Sha(rawPng ?? rawDib!);
             Directory.CreateDirectory(store.ImagesDir);
             var name = id + ".png";
             File.WriteAllBytes(store.ImagePath(name), png);
             double scale = Math.Min(1.0, ThumbHeight / (double)Math.Max(1, frame.PixelHeight));
             BitmapSource thumb = scale < 1 ? new TransformedBitmap(frame, new ScaleTransform(scale, scale)) : frame;
             File.WriteAllBytes(Path.Combine(store.ImagesDir, id + ".thumb.png"), EncodePng(thumb));
-            return (name, frame.PixelWidth, frame.PixelHeight, hash);
+            return (name, frame.PixelWidth, frame.PixelHeight, hash, png);
         });
         var item = new ClipItem
         {
@@ -247,9 +266,11 @@ public sealed class ClipboardModule : IIslandModule
             ImageWidth = result.PixelWidth,
             ImageHeight = result.PixelHeight,
             Hash = result.hash,
+            From = from,
         };
-        if (gen != _generation || _host == null) { store.DeleteFiles(item); return; }
+        if (gen != _generation || _host == null) { store.DeleteFiles(item); return null; }
         Add(item);
+        return result.png;
     }
 
     private static BitmapSource DecodeDib(byte[] dib)
@@ -290,6 +311,7 @@ public sealed class ClipboardModule : IIslandModule
         {
             _store.DeleteFiles(item);
             newest.Time = item.Time;
+            newest.From = item.From;
             Changed();
             return;
         }
@@ -320,6 +342,121 @@ public sealed class ClipboardModule : IIslandModule
 
     private static string Sha(string s) => Sha(Encoding.UTF8.GetBytes(s));
     private static string Sha(byte[] b) => Convert.ToHexString(SHA256.HashData(b))[..32];
+
+    // =====================================================================================
+    // Appunti condivisi: received items
+    // =====================================================================================
+
+    /// <summary>A valid clip from the other computer (UI thread): onto the clipboard, marked as our
+    /// own write so it is neither recorded twice nor sent back, then into the history as "dal X".</summary>
+    private async Task ReceiveAsync(ClipPayload clip)
+    {
+        if (_host == null || _store == null) return;
+        int gen = _generation;
+        var data = new DataObject();
+        string? text = null;
+        if (clip.Kind == ClipSyncKind.Text)
+        {
+            text = ClipSyncProtocol.FromWire(clip.Text ?? "");
+            data.SetText(text, TextDataFormat.UnicodeText);
+        }
+        else
+        {
+            BitmapSource frame;
+            try
+            {
+                var png = clip.Png!;
+                frame = await Task.Run(() =>
+                {
+                    BitmapSource f = BitmapDecoder.Create(new MemoryStream(png), BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames[0];
+                    f.Freeze();
+                    return f;
+                });
+            }
+            catch (Exception)
+            {
+                _host?.Log(Id, "condivisione: errore immagine non valida");
+                return;
+            }
+            if (gen != _generation || _host == null) return;
+            data.SetImage(frame);
+            data.SetData("PNG", new MemoryStream(clip.Png!));
+        }
+
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                System.Windows.Clipboard.SetDataObject(data, true); // WPF already retries for a moment
+                break;
+            }
+            catch (ExternalException)
+            {
+                if (attempt == 2) { _host?.Log(Id, "condivisione: errore appunti occupati"); return; }
+            }
+            await Task.Delay(150);
+            if (gen != _generation || _host == null) return;
+        }
+        _ownSeq = GetClipboardSequenceNumber();
+        _lastSeq = _ownSeq;
+        _host?.Log(Id, "condivisione: ricevuto");
+
+        var from = clip.From; // may be "": shown as "dall'altro computer"
+        if (!_settings.Paused)
+        {
+            if (text != null)
+            {
+                if (text.Length <= MaxTextChars && !string.IsNullOrWhiteSpace(text))
+                {
+                    var kind = IsUrl(text.Trim()) ? ClipKind.Link : ClipKind.Text;
+                    if (kind == ClipKind.Link) text = text.Trim();
+                    Add(new ClipItem { Kind = kind, Text = text, Hash = Sha(text), From = from });
+                }
+            }
+            else
+            {
+                try { await StoreImageAsync(clip.Png, null, gen, from); }
+                catch (Exception ex) { _host?.Log(Id, "elemento non salvato: " + ex.Message); }
+            }
+        }
+
+        if (gen != _generation || _host == null) return;
+        _peekFrom = from;
+        _host.Attention(Id, TimeSpan.FromMilliseconds(1200));
+    }
+
+    /// <summary>The peek shown when something arrives: "Appunti" on the left, "dal X" on the right.</summary>
+    public FrameworkElement CreateRestingFace() => BuildPeekFace(Glyph, ClipSyncProtocol.FromLabel(_peekFrom));
+
+    internal static FrameworkElement BuildPeekFace(string glyphText, string fromLabel)
+    {
+        var glyph = new TextBlock { Text = glyphText, FontSize = 14, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+        glyph.SetResourceReference(TextBlock.FontFamilyProperty, "Isola.Font.Icons");
+        glyph.SetResourceReference(TextBlock.ForegroundProperty, "Isola.Brush.Accent");
+        var title = new TextBlock { Text = "Appunti", FontSize = 13, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        var left = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        left.Children.Add(glyph);
+        left.Children.Add(title);
+
+        var right = new TextBlock
+        {
+            Text = fromLabel,
+            FontSize = 12,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Margin = new Thickness(12, 0, 0, 0),
+        };
+        right.SetResourceReference(TextBlock.ForegroundProperty, "Isola.Brush.Muted");
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.Children.Add(left);
+        Grid.SetColumn(right, 1);
+        grid.Children.Add(right);
+        return grid;
+    }
 
     // =====================================================================================
     // Actions from the card
@@ -460,12 +597,15 @@ public sealed class ClipboardModule : IIslandModule
 
         root.Children.Add(SettingCard(new TextBlock
         {
-            Text = "Testo, link, immagini e file restano solo su questo PC. Gli elementi che i gestori di password "
-                 + "segnano come riservati non vengono mai salvati.",
+            Text = "Testo, link, immagini e file restano solo su questo PC, salvo con «Appunti condivisi» acceso: "
+                 + "allora testo e immagini nuovi vanno anche all'altro computer, attraverso Tailscale. Gli elementi che i "
+                 + "gestori di password segnano come riservati non vengono mai salvati né inviati.",
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 12, 0, 12),
             Opacity = 0.75,
         }));
+
+        if (_sync != null) root.Children.Add(ClipSyncSettings.Build(_sync));
         return root;
 
         string Description()
@@ -479,21 +619,21 @@ public sealed class ClipboardModule : IIslandModule
         }
     }
 
-    private static Border SettingCard(UIElement child)
+    internal static Border SettingCard(UIElement child)
     {
         var b = new Border { Child = child };
         b.SetResourceReference(FrameworkElement.StyleProperty, "Isola.Style.SettingCard");
         return b;
     }
 
-    private static TextBlock Muted(string text)
+    internal static TextBlock Muted(string text)
     {
         var t = new TextBlock { Text = text, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
         t.SetResourceReference(TextBlock.ForegroundProperty, "Settings.Brush.Muted");
         return t;
     }
 
-    private static FrameworkElement Row(string title, string description, UIElement control, bool hideTitle = false)
+    internal static FrameworkElement Row(string title, string description, UIElement control, bool hideTitle = false)
     {
         if (hideTitle && control is CheckBox cb)
         {
@@ -508,7 +648,7 @@ public sealed class ClipboardModule : IIslandModule
         return Row(title, Muted(description), control);
     }
 
-    private static FrameworkElement Row(string title, TextBlock description, UIElement control)
+    internal static FrameworkElement Row(string title, TextBlock description, UIElement control)
     {
         var grid = new Grid { Margin = new Thickness(0, 12, 0, 12) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });

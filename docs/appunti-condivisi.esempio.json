@@ -1,0 +1,57 @@
+{
+  "leggimi": "Esempi di richieste del protocollo \"ponte\" v1 (docs/appunti-condivisi.md), generati da Isola per Windows. Servono a provare l'altra app: ricalcola la firma con la chiave di prova e confrontala con X-Isola-Sig, byte per byte su 'corpo_base64'. Il ts è fisso (1795400000000): un ricevente vero li rifiuterebbe con 401 perché vecchi di più di 5 minuti, quindi per provarli contro un server serve disattivare il controllo del ts in un test.",
+  "chiave_di_prova": {
+    "avviso": "CHIAVE DI PROVA, pubblicata qui apposta: non usarla mai per abbinare due computer veri.",
+    "testo": "AAAQ-EAYE-AUDA-OCAJ-BIFQ-YDIO-B4IB-CEQT",
+    "byte_hex": "000102030405060708090a0b0c0d0e0f10111213"
+  },
+  "esempi": [
+    {
+      "nome": "testo",
+      "metodo": "POST",
+      "percorso": "/clip",
+      "intestazioni": {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "152",
+        "X-Isola-Ts": "1795400000000",
+        "X-Isola-Sig": "5a6d292855a64cadb4d5a2a5e7f84e99f8620f165656a10ce89a52f25a0ef827"
+      },
+      "corpo": "{\"v\":1,\"id\":\"6f1c0e5e-3b2a-4c1d-9e8f-0a1b2c3d4e5f\",\"from\":\"PC-DI-PROVA\",\"ts\":1795400000000,\"kind\":\"text\",\"text\":\"Ciao dal PC ☕, caffè\\nseconda riga\"}",
+      "corpo_base64": "eyJ2IjoxLCJpZCI6IjZmMWMwZTVlLTNiMmEtNGMxZC05ZThmLTBhMWIyYzNkNGU1ZiIsImZyb20iOiJQQy1ESS1QUk9WQSIsInRzIjoxNzk1NDAwMDAwMDAwLCJraW5kIjoidGV4dCIsInRleHQiOiJDaWFvIGRhbCBQQyDimJUsIGNhZmbDqFxuc2Vjb25kYSByaWdhIn0=",
+      "messaggio_firmato_base64": "MTc5NTQwMDAwMDAwMAp7InYiOjEsImlkIjoiNmYxYzBlNWUtM2IyYS00YzFkLTllOGYtMGExYjJjM2Q0ZTVmIiwiZnJvbSI6IlBDLURJLVBST1ZBIiwidHMiOjE3OTU0MDAwMDAwMDAsImtpbmQiOiJ0ZXh0IiwidGV4dCI6IkNpYW8gZGFsIFBDIOKYlSwgY2FmZsOoXG5zZWNvbmRhIHJpZ2EifQ==",
+      "risposta_attesa": 204,
+      "nota": "Il testo viaggia con a capo \"\\n\" (Windows converte da e verso \"\\r\\n\")."
+    },
+    {
+      "nome": "immagine",
+      "metodo": "POST",
+      "percorso": "/clip",
+      "intestazioni": {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "211",
+        "X-Isola-Ts": "1795400000000",
+        "X-Isola-Sig": "72241e671ee6d550442dbb87ec028955380df4a7d76c57614b4ab7e36869a0c3"
+      },
+      "corpo": "{\"v\":1,\"id\":\"0b9e7a64-1c2d-4e3f-8a9b-7c6d5e4f3a2b\",\"from\":\"PC-DI-PROVA\",\"ts\":1795400000000,\"kind\":\"image\",\"png\":\"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==\"}",
+      "corpo_base64": "eyJ2IjoxLCJpZCI6IjBiOWU3YTY0LTFjMmQtNGUzZi04YTliLTdjNmQ1ZTRmM2EyYiIsImZyb20iOiJQQy1ESS1QUk9WQSIsInRzIjoxNzk1NDAwMDAwMDAwLCJraW5kIjoiaW1hZ2UiLCJwbmciOiJpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQUVBQUFBQkNBWUFBQUFmRmNTSkFBQUFEVWxFUVZSNDJtUDh6OER3SHdBRkJRSUFYOGp4MGdBQUFBQkpSVTVFcmtKZ2dnPT0ifQ==",
+      "messaggio_firmato_base64": "MTc5NTQwMDAwMDAwMAp7InYiOjEsImlkIjoiMGI5ZTdhNjQtMWMyZC00ZTNmLThhOWItN2M2ZDVlNGYzYTJiIiwiZnJvbSI6IlBDLURJLVBST1ZBIiwidHMiOjE3OTU0MDAwMDAwMDAsImtpbmQiOiJpbWFnZSIsInBuZyI6ImlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBRUFBQUFCQ0FZQUFBQWZGY1NKQUFBQURVbEVRVlI0Mm1QOHo4RHdId0FGQlFJQVg4angwZ0FBQUFCSlJVNUVya0pnZ2c9PSJ9",
+      "risposta_attesa": 204,
+      "nota": "PNG 1x1 in base64 standard (RFC 4648, con padding, senza a capo)."
+    },
+    {
+      "nome": "ping",
+      "metodo": "GET",
+      "percorso": "/ping",
+      "intestazioni": {
+        "X-Isola-Ts": "1795400000000",
+        "X-Isola-Sig": "73bd19938890e927bcc3f80fc507dc2ebdec2ef85f0659b3d87ad656997b450d"
+      },
+      "corpo": "",
+      "corpo_base64": "",
+      "messaggio_firmato_base64": "MTc5NTQwMDAwMDAwMAo=",
+      "risposta_attesa": 200,
+      "corpo_risposta": "{\"v\":1,\"name\":\"PC-DI-PROVA\",\"app\":\"isola-windows\"}",
+      "nota": "Corpo vuoto: si firma ts + \"\\n\". Content-Length assente o 0."
+    }
+  ]
+}

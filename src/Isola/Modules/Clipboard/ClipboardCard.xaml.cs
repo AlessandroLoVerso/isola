@@ -208,6 +208,10 @@ internal sealed class ClipEntry : INotifyPropertyChanged
 
     public bool IsLink => Item.Kind == ClipKind.Link;
 
+    /// <summary>"dal MacBook…" for items received from the other computer.</summary>
+    public string FromLabel => Item.From == null ? "" : ClipSyncProtocol.FromLabel(Item.From);
+    public Visibility FromVisibility => Item.From == null ? Visibility.Collapsed : Visibility.Visible;
+
     /// <summary>Files that no longer exist (checked on refresh).</summary>
     public bool IsMissing { get; private set; }
 

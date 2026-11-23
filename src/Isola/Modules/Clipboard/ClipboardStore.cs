@@ -20,6 +20,8 @@ public sealed class ClipItem
     public string Hash { get; set; } = "";
     public bool Pinned { get; set; }
     public DateTime Time { get; set; } = DateTime.Now;
+    /// <summary>Name of the computer it came from ("Appunti condivisi"); null if copied here.</summary>
+    public string? From { get; set; }
 }
 
 public sealed class ClipboardHistory
@@ -31,6 +33,11 @@ public sealed class ClipboardHistory
 public sealed class ClipboardSettings
 {
     public bool Paused { get; set; }
+
+    // "Appunti condivisi". The pairing key is NOT here: it is in data\clipboard\condivisione.key (DPAPI).
+    public bool SyncEnabled { get; set; }
+    public string? SyncPeer { get; set; }
+    public bool SyncPaused { get; set; }
 }
 
 /// <summary>history.json + images/ in the module's data folder. Writes happen off the UI thread,
@@ -96,7 +103,7 @@ internal sealed class ClipboardStore
     private static ClipItem Copy(ClipItem i) => new()
     {
         Id = i.Id, Kind = i.Kind, Text = i.Text, Files = i.Files, Image = i.Image,
-        ImageWidth = i.ImageWidth, ImageHeight = i.ImageHeight, Hash = i.Hash, Pinned = i.Pinned, Time = i.Time,
+        ImageWidth = i.ImageWidth, ImageHeight = i.ImageHeight, Hash = i.Hash, Pinned = i.Pinned, Time = i.Time, From = i.From,
     };
 
     public string ImagePath(string name) => Path.Combine(ImagesDir, name);

@@ -140,6 +140,11 @@
 
                     <!-- Right side: time (+ pin mark) normally, actions on hover -->
                     <StackPanel x:Name="Meta" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Visibility="{Binding FromVisibility}" Background="{DynamicResource Isola.Brush.Surface}" CornerRadius="6"
+                                Padding="6,1,6,2" Margin="0,0,7,0" VerticalAlignment="Center" MaxWidth="118">
+                            <TextBlock Text="{Binding FromLabel}" FontSize="10.5" Foreground="{DynamicResource Isola.Brush.Muted}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </Border>
                         <TextBlock Text="&#xE718;" FontFamily="{DynamicResource Isola.Font.Icons}" FontSize="10.5"
                                    Foreground="{DynamicResource Isola.Brush.Accent}" VerticalAlignment="Center" Margin="0,1,6,0"
                                    Visibility="{Binding PinVisibility}" />
