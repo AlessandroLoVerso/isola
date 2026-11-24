@@ -53,6 +53,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUser
         if controller.peer.isEmpty || !controller.hasKey { openSettings() }
     }
 
+    /// Opening the app again (Finder, Spotlight, Launchpad) shows the settings: the menu bar icon
+    /// can be hidden behind the notch or by other icons.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openSettings()
+        return false
+    }
+
     func menuNeedsUpdate(_ menu: NSMenu) {
         controller.menuOpened()
         statusLine.title = controller.menuStatus
