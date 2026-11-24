@@ -38,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUser
         menu.addItem(quit)
         statusItem.menu = menu
 
+        installEditMenu()
         controller.start()
         // Keep the status line current, also while the menu is open.
         watch = controller.objectWillChange.sink { [weak self] _ in
@@ -51,6 +52,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUser
         }
         // First launch without settings: open the window so it's clear where to start.
         if controller.peer.isEmpty || !controller.hasKey { openSettings() }
+    }
+
+    /// LSUIElement apps have no menu bar, so Cmd+V/C/X/A/Z reach text fields only through a main
+    /// menu with those key equivalents (it is never shown).
+    private func installEditMenu() {
+        let main = NSMenu()
+        let editItem = NSMenuItem()
+        let edit = NSMenu(title: "Modifica")
+        edit.addItem(withTitle: "Annulla", action: Selector(("undo:")), keyEquivalent: "z")
+        let redo = edit.addItem(withTitle: "Ripeti", action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Taglia", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copia", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Incolla", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Seleziona tutto", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = edit
+        main.addItem(editItem)
+        NSApp.mainMenu = main
     }
 
     /// Opening the app again (Finder, Spotlight, Launchpad) shows the settings: the menu bar icon

@@ -61,7 +61,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 	<string>Isola</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsLocalNetworking</key>
+		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
